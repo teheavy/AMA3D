@@ -1,0 +1,37 @@
+
+
+2014-03-03
+==========
+
+- Created  four new useraccounts on steipetest.
+- Created database:
+
+mysql> CREATE DATABASE AMA3D;
+
+- Plaintext passwords should not appear in the logfiles. To get the hashed password values:
+
+mysql> select password('kemredkurbelottulis');
++-------------------------------------------+
+| password('jifcyrtafjurvewrikkaf')         |
++-------------------------------------------+
+| *BC0A0CA8A52C71AA4E9C9BCF48332A190BA76E29 | 
++-------------------------------------------+
+1 row in set (0.00 sec)
+
+- Created developers:
+mysql> CREATE USER 'chen'@'localhost'     IDENTIFIED BY PASSWORD '*BC0A0C [ ...] A76E29';
+mysql> CREATE USER 'deswal'@'localhost'   IDENTIFIED BY PASSWORD '*CD1B1D [ ...] B87F3A';
+mysql> CREATE USER 'hsueh'@'localhost'    IDENTIFIED BY PASSWORD '*DE2C2E [ ...] C9804B';
+mysql> CREATE USER 'lahijani'@'localhost' IDENTIFIED BY PASSWORD '*EF3D3F [ ...] DA915C';
+mysql> CREATE USER 'steipe'@'localhost'   IDENTIFIED BY PASSWORD '*F04E40 [ ...] EBA26D';
+
+- Granted developer privileges
+mysql> GRANT ALL PRIVILEGES ON AMA3D.* TO 'chen'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON AMA3D.* TO 'deswal'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON AMA3D.* TO 'hsueh'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON AMA3D.* TO 'lahijani'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON AMA3D.* TO 'steipe'@'localhost';
+
+- created app account and granted
+mysql> CREATE USER 'ama'@'localhost'      IDENTIFIED BY PASSWORD '*015F51 [ ...] FCB37E';
+mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON AMA3D.* TO 'ama'@'localhost';
