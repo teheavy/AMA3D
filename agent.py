@@ -103,8 +103,12 @@ def load_data(TC):
 #terminate task
 def terminate_task():
 
-#write activity summary to log file
-def record_log_activity():
+#write activity summary, based on the input str, to log file
+def record_log_activity(activity):
+
+	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
+	log_activity.write(activity + "\n")
+	log_activity.close()
 	#return status
 
 #agent terminates itself
