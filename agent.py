@@ -15,7 +15,7 @@ def connect_db(connectinf):
 	
 	try:
 	
-		db = MySQLdb.connect(host=localhost, user, password, dbname)
+		global db = MySQLdb.connect(host=localhost, user, password, dbname)
 	except Exception, err:
 		mins = 0
 		while mins < 5
@@ -26,8 +26,6 @@ def connect_db(connectinf):
 		record_log_activity(str(err))
 		notify_admin(str(err))
 		
-		# Rollback in case there is any error
-		bd.rollback()
 		return 1
 
 #send an email including the error msg to admin(s)
@@ -114,6 +112,14 @@ def record_log_activity(activity):
 #agent terminates itself
 def terminate_self():
 
+	try:
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", 
+		if
+		cursor = db.cursor()
+		sql2 = "DELETE FROM Agent WHERE %d", AGENT_ID
+	
+		
+		
 #register agent information to database
 def register():
 	rval = False
@@ -126,7 +132,7 @@ def register():
 	try: 
 		cursor.execute(sql1)
 		results = cursor.fetchall()
-		AGENT_ID = results[0]
+		AGENT_ID = int(results[0])
 		try:
 			cursor.execute(sql)
 			db.commit()
