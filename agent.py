@@ -7,7 +7,6 @@ import time
 
 VERSION
 AGENT_ID
-db
 DIE = False 
 
 
@@ -16,7 +15,7 @@ def connect_db(connectinf):
 	
 	try:
 	
-		global db = MySQLdb.connect(host=localhost, user, password, dbname)
+		db = MySQLdb.connect(host=localhost, user, password, dbname)
 	except Exception, err:
 		mins = 0
 		while mins < 5
@@ -27,6 +26,8 @@ def connect_db(connectinf):
 		record_log_activity(str(err))
 		notify_admin(str(err))
 		
+		# Rollback in case there is any error
+		bd.rollback()
 		return 1
 
 #send an email including the error msg to admin(s)
@@ -102,41 +103,29 @@ def load_data(TC):
 #terminate task
 def terminate_task():
 
-#write activity summary, based on the input str, to log file
-def record_log_activity(activity):
+#write activity summary to log file
+# input: 
+# 	str activity: contains the activity description to be added to log file.
+#	int agentID: the unique agent identifier
+def record_log_activity(activity, agentID):
 
+	timestamp = get_date_time(time.localtime())
+	
 	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(activity + "\n")
+	log_activity.write(timestamp "\n" + agentID + activity + "\n")
 	log_activity.close()
-	#return status
-
+	
+# helper function for record_log_activty. converts the struct time.localtime()
+# to workable date and time string. input: list with the date and time info
+def get_date_time(datetime):
+	
+	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
+	time = str(datetime[3])+ "-" + str(datetime[4]) + "-" + str(datetime[5])
+	return (date+','+time)
+	
 #agent terminates itself
 def terminate_self():
-	try:
-		cursor = db.cursor()
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
-		cursor.execute(sql1)
-		status = cursors.fetchall()[0]
-		
-		if status == 0:
-			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
-			cursor.execute(sql1)
-		return true
-		
-	except Exception as err:
-		record_log_activity(str(err))
-		return false 
 
-
-
-	try:
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", 
-		if
-		cursor = db.cursor()
-		sql2 = "DELETE FROM Agent WHERE %d", AGENT_ID
-	
-		
-		
 #register agent information to database
 def register():
 	rval = False
@@ -149,7 +138,7 @@ def register():
 	try: 
 		cursor.execute(sql1)
 		results = cursor.fetchall()
-		AGENT_ID = int(results[0])
+		AGENT_ID = results[0]
 		try:
 			cursor.execute(sql)
 			db.commit()
