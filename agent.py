@@ -12,12 +12,23 @@ DIE = False
 
 #connect to database with connectinfo
 def connect_db(connectinf):
+	
 	try:
 	
 		db = MySQLdb.connect(host=localhost, user, password, dbname)
-	except:
+	except Exception, err:
+		mins = 0
+		while mins < 5
+			db = MySQLdb.connect(host=localhost, user, password, dbname)
+			time.sleep(60)
+			mins++
+		
+		record_log_activity(str(err))
+		notify_admin(str(err))
+		
 		# Rollback in case there is any error
 		bd.rollback()
+		return 1
 
 #send an email including the error msg to admin(s)
 def notify_admin(error):
