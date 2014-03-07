@@ -7,6 +7,7 @@ import time
 
 VERSION
 AGENT_ID
+db
 DIE = False 
 
 
@@ -15,7 +16,7 @@ def connect_db(connectinf):
 	
 	try:
 	
-		db = MySQLdb.connect(host=localhost, user, password, dbname)
+		global db = MySQLdb.connect(host=localhost, user, password, dbname)
 	except Exception, err:
 		mins = 0
 		while mins < 5
@@ -26,8 +27,6 @@ def connect_db(connectinf):
 		record_log_activity(str(err))
 		notify_admin(str(err))
 		
-		# Rollback in case there is any error
-		bd.rollback()
 		return 1
 
 #send an email including the error msg to admin(s)
@@ -109,6 +108,22 @@ def record_log_activity():
 
 #agent terminates itself
 def terminate_self():
+	try:
+		cursor = db.cursor()
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+		cursor.execute(sql1)
+		status = cursors.fetchall()[0]
+		
+		if status == 0:
+			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+			cursor.execute(sql1)
+		return true
+		
+	except Exception as err:
+		record_log_activity(str(err))
+		return false 
+
+
 
 #register agent information to database
 def register():
