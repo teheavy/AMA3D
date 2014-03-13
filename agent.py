@@ -1,14 +1,18 @@
 #!/usr/bin/python
 import MySQLdb
 import pprint
-import imp #for dynamically loading py codes
+import imp # for dynamically loading py codes
 import datetime
 import time
+import csv # for parsing csv files
+import smtplib # for sending email messages
+from email.mime.text import MIMEText
 
 VERSION
 AGENT_ID
 DIE = False 
-
+ADMINFILE # file storing admin info
+MYEMAIL # email account of AMA3D
 
 #connect to database with connectinfo
 def connect_db(connectinf):
@@ -32,7 +36,26 @@ def connect_db(connectinf):
 
 #send an email including the error msg to admin(s)
 def notify_admin(error):
-	# TODO: add codes here
+	# assume admin info are stored in a file in the following format
+	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
+	msg = MIMEText(error);
+	msg['Subject'] = "AMA3D - Error"
+	msg['From'] = MYEMAIL	
+
+	file = open(ADMINFILE, "r")
+	parsed = csv.reader(file, delimiter="\t")
+	listAdmin = list(parsed)
+	count = 0
+
+	for line in parsed:
+		count++
+		admin = listAdmin[count][1] 
+		msg['To'] = admin
+		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "----AMA3D"
+		# sending message through localhost
+		s = smtplib.SMTP('localhost')
+		s.sendmail(MYEMAIL, admin, msg.as_string())
+		s.quit() 
 
 #decide what to do next
 def decide_next(time, threshold):
@@ -75,7 +98,7 @@ def decide_next(time, threshold):
 					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
 
 			#load methods and data
-			load_methods(idTaskType)
+			load_methods(idTaskResource)
 			load_data(param)
 			#busy = True
 	
@@ -159,3 +182,13 @@ def die():
 
 #acting as the main function
 def essehozaibashsei():
+	
+	#configure some variables here? maybe better to pass in to main?
+	time
+	threshold
+	if connect_db(filepath): #TO-DO: add codes to open, read and parse file in connect_db or here?
+		register()
+		#check DIE here instead of in decide_next?
+		#while !DIE
+		decide_next(time, threshold)
+
