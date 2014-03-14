@@ -149,8 +149,24 @@ def get_date_time(datetime):
 #agent terminates itself
 def terminate_self():
 
+	try:
+		cursor = db.cursor()
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+		cursor.execute(sql1)
+		status = cursors.fetchall()[0]
+		
+		if status == 0:
+			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+			cursor.execute(sql1)
+		return true
+		
+	except Exception as err:
+		record_log_activity(str(err))
+		return false 
+
 #register agent information to database
 def register():
+	
 	rval = False
 	cursor = db.cursor()
 	registerTime = datetime.datetime.now()	
