@@ -80,11 +80,11 @@ def decide_next(time, threshold):
 
 			#pick the first open task 
 			#(can make agent smarter by choosing a task by type)
-			cursor.execute("""SELECT (id, idTaskType, Parameters, IsLast) \
+			cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
 					FROM TriggeringCondition WHERE Status = open""")
 			results = cursor.fetchall
 			idTC = results[0][0]
-			idTaskType = results[0][1]
+			idTaskResource = results[0][1]
 			param = results[0][2]
 			IsLast = results[0][3]
 
@@ -96,10 +96,11 @@ def decide_next(time, threshold):
 					StartTime = %s \
 					Status = 'busy' \
 					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
-
-			#load methods and data
+			
+			#load data
+			global PARAM = param	
+			#load and execute methods
 			load_methods(idTaskResource)
-			load_data(param)
 			#busy = True
 	
 	terminate_self()
@@ -118,10 +119,6 @@ def find_resources():
 #dynamically load the task-specific codes
 def load_methods(TC):
 	#return int as status
-
-#dynamically load the arguments for the task-specific codes
-def load_data(TC):
-	#return int status
 
 #terminate task
 def terminate_task():
@@ -149,8 +146,24 @@ def get_date_time(datetime):
 #agent terminates itself
 def terminate_self():
 
+	try:
+		cursor = db.cursor()
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+		cursor.execute(sql1)
+		status = cursors.fetchall()[0]
+		
+		if status == 0:
+			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+			cursor.execute(sql1)
+		return true
+		
+	except Exception as err:
+		record_log_activity(str(err))
+		return false 
+
 #register agent information to database
 def register():
+	
 	rval = False
 	cursor = db.cursor()
 	registerTime = datetime.datetime.now()	
