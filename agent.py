@@ -13,6 +13,7 @@ AGENT_ID
 DIE = False 
 ADMINFILE # file storing admin info
 MYEMAIL # email account of AMA3D
+PARAM # the data this agent is using right now
 
 #connect to database with connectinfo
 def connect_db(connectinf):
@@ -97,7 +98,10 @@ def decide_next(time, threshold):
 					Status = 'busy' \
 					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
 			
-			#load data
+			#stores parameters for to be used by load_methods
+			#we won't pass param directly to load_methods
+			#so that the agent can spawn more agents with preloaded methods
+			#and just update param
 			global PARAM = param	
 			#load and execute methods
 			load_methods(idTaskResource)
@@ -174,7 +178,7 @@ def register():
 	try: 
 		cursor.execute(sql1)
 		results = cursor.fetchall()
-		AGENT_ID = results[0]
+		global AGENT_ID = results[0]
 		try:
 			cursor.execute(sql)
 			db.commit()
