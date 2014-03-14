@@ -1,21 +1,25 @@
 #!/usr/bin/python
 import MySQLdb
 import pprint
-import imp #for dynamically loading py codes
+import imp # for dynamically loading py codes
 import datetime
 import time
+import csv # for parsing csv files
+import smtplib # for sending email messages
+from email.mime.text import MIMEText
 
 VERSION
 AGENT_ID
 DIE = False 
-
+ADMINFILE # file storing admin info
+MYEMAIL # email account of AMA3D
 
 #connect to database with connectinfo
 def connect_db(connectinf):
 	
 	try:
 	
-		global db = MySQLdb.connect(host=localhost, user, password, dbname)
+		db = MySQLdb.connect(host=localhost, user, password, dbname)
 	except Exception, err:
 		mins = 0
 		while mins < 5
@@ -26,11 +30,32 @@ def connect_db(connectinf):
 		record_log_activity(str(err))
 		notify_admin(str(err))
 		
+		# Rollback in case there is any error
+		bd.rollback()
 		return 1
 
 #send an email including the error msg to admin(s)
 def notify_admin(error):
-	# TODO: add codes here
+	# assume admin info are stored in a file in the following format
+	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
+	msg = MIMEText(error);
+	msg['Subject'] = "AMA3D - Error"
+	msg['From'] = MYEMAIL	
+
+	file = open(ADMINFILE, "r")
+	parsed = csv.reader(file, delimiter="\t")
+	listAdmin = list(parsed)
+	count = 0
+
+	for line in parsed:
+		count++
+		admin = listAdmin[count][1] 
+		msg['To'] = admin
+		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "----AMA3D"
+		# sending message through localhost
+		s = smtplib.SMTP('localhost')
+		s.sendmail(MYEMAIL, admin, msg.as_string())
+		s.quit() 
 
 #decide what to do next
 def decide_next(time, threshold):
@@ -73,7 +98,7 @@ def decide_next(time, threshold):
 					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
 
 			#load methods and data
-			load_methods(idTaskType)
+			load_methods(idTaskResource)
 			load_data(param)
 			#busy = True
 	
@@ -101,25 +126,29 @@ def load_data(TC):
 #terminate task
 def terminate_task():
 
-#write activity summary, based on the input str, to log file
-def record_log_activity(activity):
+#write activity summary to log file
+# input: 
+# 	str activity: contains the activity description to be added to log file.
+#	int agentID: the unique agent identifier
+def record_log_activity(activity, agentID):
 
+	timestamp = get_date_time(time.localtime())
+	
 	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(activity + "\n")
+	log_activity.write(timestamp "\n" + agentID + activity + "\n")
 	log_activity.close()
-	#return status
-
+	
+# helper function for record_log_activty. converts the struct time.localtime()
+# to workable date and time string. input: list with the date and time info
+def get_date_time(datetime):
+	
+	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
+	time = str(datetime[3])+ "-" + str(datetime[4]) + "-" + str(datetime[5])
+	return (date+','+time)
+	
 #agent terminates itself
 def terminate_self():
 
-	try:
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", 
-		if
-		cursor = db.cursor()
-		sql2 = "DELETE FROM Agent WHERE %d", AGENT_ID
-	
-		
-		
 #register agent information to database
 def register():
 	rval = False
@@ -132,7 +161,7 @@ def register():
 	try: 
 		cursor.execute(sql1)
 		results = cursor.fetchall()
-		AGENT_ID = int(results[0])
+		AGENT_ID = results[0]
 		try:
 			cursor.execute(sql)
 			db.commit()
@@ -153,3 +182,13 @@ def die():
 
 #acting as the main function
 def essehozaibashsei():
+	
+	#configure some variables here? maybe better to pass in to main?
+	time
+	threshold
+	if connect_db(filepath): #TO-DO: add codes to open, read and parse file in connect_db or here?
+		register()
+		#check DIE here instead of in decide_next?
+		#while !DIE
+		decide_next(time, threshold)
+
