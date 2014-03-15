@@ -124,17 +124,18 @@ def find_resources():
 def load_methods(idTR):
 	
 	try: 
-	    cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""", (idTR))
+	    sqlText = """SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR
+	    cursor.execute(sqlText)
 	    code_path = cursor.fetchall		
 	    code_dir = os.path.dirname(code_path)
 	    file = open(code_path, 'rb')
 	    module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
 #We need to know the methods then run them by module.<method name()>
-            try: file.close()
-	    except: pass
+            file.close()	    
        except ImportError, x:
         traceback.print_exc(file = sys.stderr)
         raise
+
     
 	
 
