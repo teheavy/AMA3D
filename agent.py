@@ -8,7 +8,7 @@ import csv # for parsing csv files
 import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
-VERSION = 1.0.0
+VERSION = 1.0.0 
 AGENT_ID
 DIE = False #
 ADMINFILE # file storing admin info
@@ -121,8 +121,22 @@ def find_resources():
 	#return list of string or vector
 
 #dynamically load the task-specific codes
-def load_methods(TC):
-	#return int as status
+def load_methods(idTR):
+	
+	try: 
+	    cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""", (idTR))
+	    code_path = cursor.fetchall		
+	    code_dir = os.path.dirname(code_path)
+	    file = open(code_path, 'rb')
+	    module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
+#We need to know the methods then run them by module.<method name()>
+            try: file.close()
+	    except: pass
+       except ImportError, x:
+        traceback.print_exc(file = sys.stderr)
+        raise
+    
+	
 
 #terminate task
 def terminate_task():
