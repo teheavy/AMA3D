@@ -130,7 +130,8 @@ def load_methods(idTR):
 	    code_dir = os.path.dirname(code_path)
 	    file = open(code_path, 'rb')
 	    module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
-            file.close()	    
+            return module
+            	    
        except ImportError, x:
         traceback.print_exc(file = sys.stderr)
         raise
