@@ -151,7 +151,7 @@ def record_log_activity(activity, agentID):
 	timestamp = get_date_time(time.localtime())
 
 	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(timestamp "\n" + agentID + activity + "\n")
+	log_activity.write(timestamp "\n" + agentID + ": " + activity + "\n")
 	log_activity.close()
 
 # helper function for record_log_activty. converts the struct time.localtime()
