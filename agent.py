@@ -123,16 +123,23 @@ def find_resources():
 #dynamically load the task-specific codes
 def load_methods(idTR):
 	
-	try: 
-	    sqlText = """SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR
-	    cursor.execute(sqlText)
-	    code_path = cursor.fetchall		
-	    code_dir = os.path.dirname(code_path)
-	    file = open(code_path, 'rb')
-	    module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
+    try:
+	    try: 
+		sqlText = """SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR
+		cursor.execute(sqlText)
+		code_path = cursor.fetchall		
+		code_dir = os.path.dirname(code_path)
+		fin = open(code_path, 'rb')
+		module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
             return module
             	    
-       except ImportError, x:
+           finally:
+		try: fin.close()
+		except: pass
+    except ImportError, x:
+        traceback.print_exc(file = sys.stderr)
+        raise
+    except:
         traceback.print_exc(file = sys.stderr)
         raise
 
