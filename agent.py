@@ -8,7 +8,7 @@ import csv # for parsing csv files
 import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
-VERSION = 1.0.0 
+VERSION = "1.0.0"
 AGENT_ID
 DIE = False #
 ADMINFILE # file storing admin info
@@ -151,7 +151,7 @@ def record_log_activity(activity, agentID):
 	timestamp = get_date_time(time.localtime())
 
 	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(timestamp "\n" + agentID + activity + "\n")
+	log_activity.write(timestamp "\n" + agentID + ": " + activity + "\n")
 	log_activity.close()
 
 # helper function for record_log_activty. converts the struct time.localtime()
