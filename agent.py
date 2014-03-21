@@ -8,7 +8,7 @@ import csv # for parsing csv files
 import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
-VERSION = 1.0.0 
+VERSION = "1.0.0"
 AGENT_ID
 DIE = False #
 ADMINFILE # file storing admin info
