@@ -8,3 +8,11 @@ CREATE TABLE IF NOT EXISTS TriggeringCondition (
   PRIMARY KEY (id)
   );
   
+CREATE TABLE IF NOT EXISTS Agent (
+  id            INT PRIMARY KEY AUTO_INCREMENT,
+  ParentID      INT REFERENCES Agent(id) ON DELETE RESTRICT,
+  RegisterTime  DATETIME NOT NULL,
+  StartTime     DATETIME NOT NULL,
+  Status        INT NOT NULL,
+  NumTaskDone   INT NOT NULL,
+  ProcessID     INT NOT NULL);
