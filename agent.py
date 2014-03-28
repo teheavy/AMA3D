@@ -147,9 +147,6 @@ def load_methods(idTR):
 # for example mod=load_methods(idTR) then mod.play()
 	
 
-#terminate task
-def terminate_task():
-
 #write activity summary to log file
 # input: 
 # 	str activity: contains the activity description to be added to log file.
@@ -213,7 +210,7 @@ def register():
 		 rval = False
 	return rval
 
-#hibernate
+#hibernate: do we need this? This is very similar to os's sleep command.
 def hibernate():
 
 #die
