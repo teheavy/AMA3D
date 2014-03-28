@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS TriggeringCondition (
-  id INT,
-  Parameters VARCHAR(45),
+  id INT NOT NULL,
+  Parameters VARCHAR(45) NOT NULL,
   idTaskResource INT REFERENCES TasResource(id) ON DELETE RESTRICT,
   idAgent INT REFERENCES Agent(id) ON DELETE RESTRICT,
-  IsLast BOOLEAN,
-  Status VARCHAR(45));
+  IsLast BOOLEAN NOT NULL,
+  Status VARCHAR(45) NOT NULL,
+  PRIMARY KEY (id)
+  );
   
