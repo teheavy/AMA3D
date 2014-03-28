@@ -1,4 +1,8 @@
 CREATE TABLE IF NOT EXISTS TriggeringCondition (
   id INT,
-  ....
-  );
+  Parameters VARCHAR(45),
+  idTaskResource INT,
+  idAgent INT,
+  IsLast BOOLEAN,
+  Status VARCHAR(45);
+  
