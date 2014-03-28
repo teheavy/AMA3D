@@ -1,3 +1,5 @@
+# For testing the agent framework ....
+
 CREATE TABLE IF NOT EXISTS TriggeringCondition (
   id            INT PRIMARY KEY AUTO_INCREMENT,
   Parameters    VARCHAR(45) NOT NULL,
@@ -25,3 +27,5 @@ CREATE TABLE IF NOT EXISTS TaskResource(
   RAM           VARCHAR(45) NOT NULL,
   numTimesExecuted INT NOT NULL
 );
+
+# INSERT some test TC's
