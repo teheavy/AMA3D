@@ -114,11 +114,17 @@ def decide_next(time, threshold):
 #create an agent by using this agent as template	
 def spawn(machineID):
 	#return int
+	#potential methods:
+	#echo protocol? xml-rpc protocol?
+	#ssh to remote machine, scp agent.py, then os.exec the script?
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
 def find_resources():
 	#return list of string or vector
+	#ssh remotely, run a "top" command to check for CPU?
+	#other ways to check without logging in?
+	#look at how distributed machines work...?
 
 #dynamically load the task-specific codes
 def load_methods(idTR):
