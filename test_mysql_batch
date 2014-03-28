@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS Agent (
   NumTaskDone   INT NOT NULL,
   ProcessID     INT NOT NULL);
   
-  CREATE TABLE IF NOT EXISTS TriggeringCondition (
+  CREATE TABLE IF NOT EXISTS TaskResource(
   id INT NOT NULL,
   Codepath VARCHAR(45) NOT NULL,
   Version VARCHAR(45) NOT NULL,
