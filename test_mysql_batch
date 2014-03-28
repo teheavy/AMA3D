@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS TriggeringCondition (
-  id INT NOT NULL,
-  Parameters VARCHAR(45) NOT NULL,
+  id            INT NOT NULL,
+  Parameters    VARCHAR(45) NOT NULL,
   idTaskResource INT REFERENCES TasResource(id) ON DELETE RESTRICT,
-  idAgent INT REFERENCES Agent(id) ON DELETE RESTRICT,
-  IsLast BOOLEAN NOT NULL,
-  Status VARCHAR(45) NOT NULL,
+  idAgent       INT REFERENCES Agent(id) ON DELETE RESTRICT,
+  IsLast        BOOLEAN NOT NULL,
+  Status        VARCHAR(45) NOT NULL,
   PRIMARY KEY (id) AUTO_INCREMENT
 );
   
@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS Agent (
 );
   
 CREATE TABLE IF NOT EXISTS TaskResource(
-  id INT NOT NULL,
-  Codepath VARCHAR(45) NOT NULL,
-  Version VARCHAR(45) NOT NULL,
-  CPU VARCHAR(45) NOT NULL,
-  RAM VARCHAR(45) NOT NULL,
+  id            INT NOT NULL,
+  Codepath      VARCHAR(45) NOT NULL,
+  Version       VARCHAR(45) NOT NULL,
+  CPU           VARCHAR(45) NOT NULL,
+  RAM           VARCHAR(45) NOT NULL,
   numTimesExecuted INT NOT NULL,
   PRIMARY KEY (id) AUTO_INCREMENT
 );
