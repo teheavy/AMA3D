@@ -23,10 +23,10 @@ def connect_db(dbinfopath):
 		db = MySQLdb.connect(host=localhost, user, password, dbname)
 	except Exception, err:
 		mins = 0
-		while mins < 5
+		while mins < 5:
 			db = MySQLdb.connect(host=localhost, user, password, dbname)
 			time.sleep(60)
-			mins++
+			mins+=1
 
 		record_log_activity(str(err))
 		notify_admin(str(err))
@@ -49,7 +49,7 @@ def notify_admin(error):
 	count = 0
 
 	for line in parsed:
-		count++
+		count+=1
 		admin = listAdmin[count][1] 
 		msg['To'] = admin
 		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "----AMA3D"
@@ -74,7 +74,7 @@ def decide_next(time, threshold):
 		results = cursor.fetchall
 		if results[0][0] == 0: #idle
 			time.sleep(time)
-		else if results[0][0] > 0: #spawn one agent
+		elif results[0][0] > 0: #spawn one agent
 			freeMachines = find_resources()
 			spawn(freeMachines[0])
 		else: #work
@@ -86,23 +86,26 @@ def decide_next(time, threshold):
 			results = cursor.fetchall
 			idTC = results[0][0]
 			idTaskResource = results[0][1]
-			param = results[0][2]
 			IsLast = results[0][3]
-
-			#update TriggeringCondition table
-			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
-					VALUES (%d, 'in_progress') WHERE id = %d""", (AGENT_ID, idTC)
-			#update Agent table
-			cursor.execut("""UPDATE Agent SET \
-					StartTime = %s \
-					Status = 'busy' \
-					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
 
 			#stores parameters for to be used by load_methods
 			#we won't pass param directly to load_methods
 			#so that the agent can spawn more agents with preloaded methods
 			#and just update param
-			global PARAM = param	
+			global PARAM
+			PARAM = results[0][2]
+
+			
+			
+			#update TriggeringCondition table
+			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
+					VALUES (%d, 'in_progress') WHERE id = %d""", (AGENT_ID, idTC))
+			#update Agent table
+			cursor.execute("""UPDATE Agent SET \
+					StartTime = %s \
+					Status = 'busy' \
+					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
+
 			#load and execute methods
 			load_methods(idTaskResource)
 			#busy = True
@@ -113,6 +116,7 @@ def decide_next(time, threshold):
 #spawn another agent: 
 #create an agent by using this agent as template	
 def spawn(machineID):
+	pass
 	#return int
 	#potential methods:
 	#echo protocol? xml-rpc protocol?
@@ -121,6 +125,7 @@ def spawn(machineID):
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
 def find_resources():
+	pass
 	#return list of string or vector
 	#ssh remotely, run a "top" command to check for CPU?
 	#other ways to check without logging in?
@@ -131,17 +136,14 @@ def load_methods(idTR):
 	
     try:
 	    try: 
-		sqlText = """SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR
-		cursor.execute(sqlText)
-		code_path = cursor.fetchall		
-		code_dir = os.path.dirname(code_path)
-		fin = open(code_path, 'rb')
-		module= imp.load_source(md5.new(code_path).hexdigest(), code_path, file)
-            return module
-            	    
-           finally:
-		try: fin.close()
-		except: pass
+			cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR)
+			code_path = cursor.fetchall		
+			code_dir = os.path.dirname(code_path)
+			fin = open(code_path, 'rb')
+			return imp.load_source(md5.new(code_path).hexdigest(), code_path, file)	
+		finally:
+			try: fin.close()
+			except: pass
     except ImportError, x:
         traceback.print_exc(file = sys.stderr)
         raise
