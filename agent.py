@@ -151,9 +151,7 @@ def load_methods(idTR):
         traceback.print_exc(file = sys.stderr)
         raise
 
-#We need to know the methods then run them by module.<method name()>
-# for example mod=load_methods(idTR) then mod.play()
-	
+
 
 #write activity summary to log file
 # input: 
