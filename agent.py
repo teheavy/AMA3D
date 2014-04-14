@@ -140,6 +140,11 @@ def find_resources():
 
 #dynamically load the task-specific codes
 def load_methods(idTR):
+	""" Dynamically load a module that its file path is known.
+    
+	Keyword arguments:
+	idTR -- id number of TaskResource table
+	"""
 	
     try:
 	    try: 
@@ -182,7 +187,7 @@ def get_date_time(datetime):
 	Keyword arguments:
 	datetime: list with the date and time info
 	
-	returns a str of the format (date, time)
+	return a str of the format (date, time)
 	"""
 	
 	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
