@@ -172,7 +172,10 @@ def get_date_time(datetime):
 	"""Convert and return the struct time.localtime() as a workable date and time string.
 	
 	Helper function for record_log_activty().
-	input: list with the date and time info
+	Keyword arguments:
+	datetime: list with the date and time info
+	
+	returns a str of the format (date, time)
 	"""
 	
 	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
