@@ -4,6 +4,8 @@
 #-load method and execute (track)
 #-check out os func kill -asdf 
 #-die function
+#-"db" has to be a global variable? or call open and close more often. (open whenever we need it?)
+#-write to log file: concurrency
 
 
 #!/usr/bin/python
