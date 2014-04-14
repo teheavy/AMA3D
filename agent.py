@@ -153,11 +153,13 @@ def load_methods(idTR):
 
 
 
-#write activity summary to log file
-# input: 
-# 	str activity: contains the activity description to be added to log file.
-#	int agentID: the unique agent identifier
 def record_log_activity(activity, agentID):
+	"""Write activity summary of the agent to the log file.
+	
+	Keyword arguments:
+	str activity: contains the activity description to be added to log file.
+	int agentID: the unique agent identifier
+	"""
 
 	timestamp = get_date_time(time.localtime())
 
@@ -165,10 +167,14 @@ def record_log_activity(activity, agentID):
 	log_activity.write(timestamp "\n" + agentID + ": " + activity + "\n")
 	log_activity.close()
 
-# helper function for record_log_activty. converts the struct time.localtime()
-# to workable date and time string. input: list with the date and time info
-def get_date_time(datetime):
 
+def get_date_time(datetime):
+	"""Convert and return the struct time.localtime() as a workable date and time string.
+	
+	Helper function for record_log_activty().
+	input: list with the date and time info
+	"""
+	
 	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
 	time = str(datetime[3])+ "-" + str(datetime[4]) + "-" + str(datetime[5])
 	return (date+','+time)
