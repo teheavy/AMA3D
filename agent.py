@@ -23,6 +23,10 @@ def connect_db(user, password, dbname):
 	(str, int, str) -> int
 	Given user information, try to connect database.
 	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
+	Input arguments:
+	user: your username
+	password: your password
+	dbname: the database we are going to log in
 	'''
 	try:
 		file = open
