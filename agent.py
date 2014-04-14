@@ -177,7 +177,9 @@ def load_methods(idTR):
 
 
 def record_log_activity(activity, agentID):
-	"""Write activity summary of the agent to the log file.
+	"""
+	(int, int) -> ()
+	Write activity summary of the agent to the log file.
 	
 	Keyword arguments:
 	str activity: contains the activity description to be added to log file.
@@ -192,7 +194,9 @@ def record_log_activity(activity, agentID):
 
 
 def get_date_time(datetime):
-	"""Convert and return the struct time.localtime() as a workable date and time string.
+	"""
+	(str) -> str
+	Convert and return the struct time.localtime() as a workable date and time string.
 	
 	Helper function for record_log_activty().
 	Keyword arguments:
@@ -208,7 +212,7 @@ def get_date_time(datetime):
 #agent terminates itself
 def terminate_self():
 	'''
-	()->boolean
+	() -> boolean
 	Check if current agent has finish its job.
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
@@ -260,6 +264,7 @@ def register():
 
 #hibernate: do we need this? This is very similar to os's sleep command.
 def hibernate():
+	pass
 
 #die
 def die():
