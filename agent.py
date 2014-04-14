@@ -44,7 +44,9 @@ def connect_db(user, password, dbname):
 
 
 def notify_admin(error):
-	"""Send an email including the error message to the admin(s).
+	"""
+	(str) -> ()
+	Send an email including the error message to the admin(s).
 	
 	Keyword arguments:
 	error -- the error message to be sent
@@ -73,7 +75,9 @@ def notify_admin(error):
 
 
 def decide_next(time, threshold):
-	"""Decide what to do next (brain of the agent).
+	"""
+	(int, int) -> ()
+	Decide what to do next (brain of the agent).
 	
 	Keyword arguments:
 	time -- how long, in seconds, the agent will sleep when there is nothing to do
@@ -145,7 +149,9 @@ def find_resources():
 
 #dynamically load the task-specific codes
 def load_methods(idTR):
-	""" Dynamically load a module that its file path is known.
+	""" 
+	(int) -> boolean
+	Dynamically load a module that its file path is known.
     
 	Keyword arguments:
 	idTR -- id number of TaskResource table
@@ -223,7 +229,10 @@ def terminate_self():
 
 
 def register():
-	"""Register agent information to the database and return the completion status: 0 for fail, 1 for success."""
+	"""
+	() -> boolean
+	Register agent information to the database and return the completion status: 0 for fail, 1 for success.
+	"""
 
 	rval = False
 
@@ -254,6 +263,10 @@ def hibernate():
 
 #die
 def die():
+	"""
+	()->()
+	When something is wrong with database, call die to shutdown the system.
+	"""
 	DIE = True
 
 
