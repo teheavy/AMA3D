@@ -9,6 +9,8 @@ import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
 VERSION = "1.0.0"
+#This version assumes a specific database and relation format according to the entity-relational diagram 
+#presented in AMA3D
 AGENT_ID
 DIE = False #
 ADMINFILE # file storing admin info
@@ -35,8 +37,14 @@ def connect_db(dbinfopath):
 		bd.rollback()
 		return 1
 
-#send an email including the error msg to admin(s)
+
 def notify_admin(error):
+	"""Send an email including the error message to the admin(s).
+	
+	Keyword arguments:
+	error -- the error message to be sent
+	"""
+	
 	# assume admin info are stored in a file in the following format
 	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
 	msg = MIMEText(error);
@@ -58,29 +66,31 @@ def notify_admin(error):
 		s.sendmail(MYEMAIL, admin, msg.as_string())
 		s.quit() 
 
-#decide what to do next
-def decide_next(time, threshold):
 
+def decide_next(time, threshold):
+	"""Decide what to do next (brain of the agent).
+	
+	Keyword arguments:
+	time -- how long, in seconds, the agent will sleep when there is nothing to do
+	threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
+	"""
+	
 	while DIE == False:
 
-		#not sure if we need to check if agent is busy.... ?
-		#if busy == True:
-		#	sleep(time)
-		#else:
 		cursor = db.cursor()
 
 		#check for number of TC
 		cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
 		results = cursor.fetchall
-		if results[0][0] == 0: #idle
+		if results[0][0] == 0: #no open TC => idle
 			time.sleep(time)
-		elif results[0][0] > 0: #spawn one agent
+		elif results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
 			freeMachines = find_resources()
 			spawn(freeMachines[0])
-		else: #work
-
+		else: #0 < number of TC < threshold => work (note: impossible to have negative number of TC)
+		
 			#pick the first open task 
-			#(can make agent smarter by choosing a task by type)
+			#Future implementation: can make agent smarter by choosing a task by type
 			cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
 					FROM TriggeringCondition WHERE Status = open""")
 			results = cursor.fetchall
@@ -88,14 +98,11 @@ def decide_next(time, threshold):
 			idTaskResource = results[0][1]
 			IsLast = results[0][3]
 
-			#stores parameters for to be used by load_methods
-			#we won't pass param directly to load_methods
+			#globally stores parameters for to be used by load_methods
 			#so that the agent can spawn more agents with preloaded methods
-			#and just update param
+			#and just update PARAM
 			global PARAM
 			PARAM = results[0][2]
-
-			
 			
 			#update TriggeringCondition table
 			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
@@ -108,8 +115,8 @@ def decide_next(time, threshold):
 
 			#load and execute methods
 			load_methods(idTaskResource)
-			#busy = True
-
+			
+	#if a die signal is present: self terminate
 	terminate_self()
 
 
@@ -200,10 +207,12 @@ def terminate_self():
 		record_log_activity(str(err))
 		return false 
 
-#register agent information to database
+
 def register():
+	"""Register agent information to the database and return the completion status: 0 for fail, 1 for success."""
 
 	rval = False
+
 	cursor = db.cursor()
 	registerTime = datetime.datetime.now()	
 	sql1 = """SELECT max(id) FROM Agent"""
@@ -215,7 +224,7 @@ def register():
 		results = cursor.fetchall()
 		global AGENT_ID = results[0]
 		try:
-			cursor.execute(sql)
+			cursor.execute(sql2)
 			db.commit()
 			rval = True
 		except:
@@ -223,6 +232,7 @@ def register():
 			rval = False
 	except:
 		 rval = False
+
 	return rval
 
 #hibernate: do we need this? This is very similar to os's sleep command.
