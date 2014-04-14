@@ -1,3 +1,11 @@
+#TODO:
+#-register (wrong version!? concurrency)
+#-spawn (serailization), find resources
+#-load method and execute (track)
+#-check out os func kill -asdf 
+#-die function
+
+
 #!/usr/bin/python
 import MySQLdb
 import pprint
@@ -239,31 +247,28 @@ def terminate_self():
 def register():
 	"""
 	() -> boolean
-	Register agent information to the database and return the completion status: 0 for fail, 1 for success.
+	Register agent information to the database update global variable AGENT_ID and return the completion status: 0 for fail, 1 for success.
 	"""
 
 	rval = False
 
 	cursor = db.cursor()
+
 	registerTime = datetime.datetime.now()	
-	sql1 = """SELECT max(id) FROM Agent"""
-	sql2 = """INSERT INTO Agent \ 
+	
+	sql = """INSERT INTO Agent \ 
 		(RegisterTime, StartTime, Status, NumTaskDone) \
 		VALUES (%s, 'not_yet_started', 1, 0)""", (registerTime)
 	try: 
-		cursor.execute(sql1)
-		results = cursor.fetchall()
-		global AGENT_ID = results[0]
-		try:
-			cursor.execute(sql2)
-			db.commit()
-			rval = True
-		except:
-			db.rollback()	
-			rval = False
+		cursor.execute(sql)
+		global AGENT_ID
+		AGENT_ID = db.insert_id()
+		db.commit() #might not need this?
+		rval = True
 	except:
-		 rval = False
-
+		db.rollback()	
+		rval = False
+	
 	return rval
 
 #hibernate: do we need this? This is very similar to os's sleep command.
