@@ -18,11 +18,16 @@ MYEMAIL # email account of AMA3D
 PARAM # the data this agent is using right now
 
 #connect to database with connectinfo
-def connect_db(dbinfopath):
-
+def connect_db(user, password, dbname):
+	'''
+	(str, int, str) -> int
+	Given user information, try to connect database.
+	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
+	'''
 	try:
 		file = open
 		db = MySQLdb.connect(host=localhost, user, password, dbname)
+		return 0
 	except Exception, err:
 		mins = 0
 		while mins < 5:
@@ -196,7 +201,11 @@ def get_date_time(datetime):
 
 #agent terminates itself
 def terminate_self():
-
+	'''
+	()->boolean
+	Check if current agent has finish its job.
+	If finished, delete the agent from status table and return true, otherwise return false.
+	'''
 	try:
 		cursor = db.cursor()
 		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
@@ -205,8 +214,8 @@ def terminate_self():
 
 		if status == 0:
 			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
-			cursor.execute(sql1)
-		return true
+			cursor.execute(sql2)
+			return true
 
 	except Exception as err:
 		record_log_activity(str(err))
