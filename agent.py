@@ -141,12 +141,13 @@ def load_methods(idTR):
 			code_dir = os.path.dirname(code_path)
 			fin = open(code_path, 'rb')
 			return imp.load_source(md5.new(code_path).hexdigest(), code_path, file)	
+		except ImportError, x:
+			traceback.print_exc(file = sys.stderr)
+			raise
 		finally:
 			try: fin.close()
 			except: pass
-    except ImportError, x:
-        traceback.print_exc(file = sys.stderr)
-        raise
+
     except:
         traceback.print_exc(file = sys.stderr)
         raise
