@@ -233,24 +233,24 @@ def get_date_time(datetime):
 	return (date+','+time)
 
 #agent terminates itself
-def terminate_self():
+def terminate_self(diesignal):
 	'''
 	() -> boolean
 	Check if current agent has finish its job.
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
+	global DB
+	cursor = DB.cursor()
+	
 	try:
-		global DB
-		cursor = DB.cursor()
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
-		cursor.execute(sql1)
-		status = cursors.fetchall()[0]
-
-		if status == 0:
-			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
-			cursor.execute(sql2)
-			return true
+		if diesignal == True:
+			record_log_activity("This process is killed")
+		else:
+			record_log_activity("This process is automatically terminated")
 			
+		sql = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
+		cursor.execute(sql)
+		quit()
 
 	except Exception as err:
 		record_log_activity(str(err))
@@ -293,7 +293,7 @@ def hibernate():
 def die():
 	"""
 	()->()
-	Listen for die signal and return true iff die signal is present.
+	When something is wrong with database, call die to shutdown the system.
 	"""
 	DIE = True
 
