@@ -1,5 +1,5 @@
 #TODO:
-#-register (wrong version!? concurrency)
+
 #-spawn (serailization), find resources
 #-load method and execute (track)
 #-check out os func kill -asdf 
@@ -7,7 +7,8 @@
 #-"db" has to be a global variable? or call open and close more often. (open whenever we need it?)
 #-write to log file: concurrency
 #-every function that deals with the db should check if connection db is opened if not, open it.
-
+#-implement isOnly to check whether this is the only running agent (we want to sustain one agent at all time)
+#---> or we might want to sustain a couple?
 
 #!/usr/bin/python
 import MySQLdb
@@ -93,7 +94,7 @@ def notify_admin(error):
 		s.quit() 
 
 
-def decide_next(time, threshold):
+def decide_next(seconds, threshold):
 	"""
 	(int, int) -> ()
 	Decide what to do next (brain of the agent).
@@ -102,6 +103,8 @@ def decide_next(time, threshold):
 	time -- how long, in seconds, the agent will sleep when there is nothing to do
 	threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
 	"""
+	
+	count = 0
 	
 	while not die():
 
@@ -112,7 +115,12 @@ def decide_next(time, threshold):
 		cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
 		results = cursor.fetchall
 		if results[0][0] == 0: #no open TC => idle
-			time.sleep(time)
+			count += 1
+			if count > 5 && not isOnly(): 
+				#if idling more than five times and this is not the last agent: terminate
+				terminate_self(False)
+			else:
+				time.sleep(seconds)
 		elif results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
 			freeMachines = find_resources()
 			spawn(freeMachines[0])
@@ -233,24 +241,24 @@ def get_date_time(datetime):
 	return (date+','+time)
 
 #agent terminates itself
-def terminate_self(diesignal):
+def terminate_self():
 	'''
 	() -> boolean
 	Check if current agent has finish its job.
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
-	global DB
-	cursor = DB.cursor()
-	
 	try:
-		if diesignal == True:
-			record_log_activity("This process is killed")
-		else:
-			record_log_activity("This process is automatically terminated")
+		global DB
+		cursor = DB.cursor()
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
+		cursor.execute(sql1)
+		status = cursors.fetchall()[0]
+
+		if status == 0:
+			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
+			cursor.execute(sql2)
+			return true
 			
-		sql = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
-		cursor.execute(sql)
-		quit()
 
 	except Exception as err:
 		record_log_activity(str(err))
@@ -258,10 +266,14 @@ def terminate_self(diesignal):
 
 
 def register():
-	"""
-	() -> boolean
-	Register agent information to the database update global variable AGENT_ID and return the completion status: 0 for fail, 1 for success.
-	"""
+	"""() -> boolean
+        Register agent information to the database. Update global variable AGENT_ID
+        from database. Return the completion status.
+
+        : param:  none
+        : effects: global AGENT_ID is set to autoincremented AGENT table id
+        : returns: True for successful database insert, False otherwise.
+        """
 
 	rval = False
 
@@ -293,7 +305,7 @@ def hibernate():
 def die():
 	"""
 	()->()
-	When something is wrong with database, call die to shutdown the system.
+	Listen for die signal and return true iff die signal is present.
 	"""
 	DIE = True
 
