@@ -20,13 +20,15 @@ import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
 VERSION = "1.0.0"
-#This version assumes a specific database and relation format according to the entity-relational diagram 
-#presented in AMA3D
+# This version assumes a specific database and relation format according to the entity-relational diagram 
+# presented in AMA3D
 AGENT_ID
 DIE = False #
 ADMINFILE # file storing admin info
 MYEMAIL # email account of AMA3D
 PARAM # the data this agent is using right now
+DB # global db connection
+
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
@@ -41,12 +43,13 @@ def connect_db(user, password, dbname):
 	'''
 	try:
 		file = open
-		db = MySQLdb.connect(host=localhost, user, password, dbname)
+		global DB
+		DB = MySQLdb.connect(host=localhost, user, password, dbname)
 		return 0
 	except Exception, err:
 		mins = 0
 		while mins < 5:
-			db = MySQLdb.connect(host=localhost, user, password, dbname)
+			DB = MySQLdb.connect(host=localhost, user, password, dbname)
 			time.sleep(60)
 			mins+=1
 
@@ -54,7 +57,7 @@ def connect_db(user, password, dbname):
 		notify_admin(str(err))
 
 		# Rollback in case there is any error
-		bd.rollback()
+		DB.rollback()
 		return 1
 
 
@@ -99,10 +102,11 @@ def decide_next(time, threshold):
 	threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
 	"""
 	
-	while DIE == False:
+	while die() == False:
 
-		cursor = db.cursor()
-
+		global DB
+		cursor = DB.cursor()
+		
 		#check for number of TC
 		cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
 		results = cursor.fetchall
@@ -233,7 +237,8 @@ def terminate_self():
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
 	try:
-		cursor = db.cursor()
+		global DB
+		cursor = DB.cursor()
 		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
 		cursor.execute(sql1)
 		status = cursors.fetchall()[0]
@@ -256,7 +261,8 @@ def register():
 
 	rval = False
 
-	cursor = db.cursor()
+	global DB
+	cursor = DB.cursor()
 
 	registerTime = datetime.datetime.now()	
 	
@@ -266,11 +272,11 @@ def register():
 	try: 
 		cursor.execute(sql)
 		global AGENT_ID
-		AGENT_ID = db.insert_id()
-		db.commit() #might not need this?
+		AGENT_ID = DB.insert_id()
+		DB.commit() #might not need this?
 		rval = True
 	except:
-		db.rollback()	
+		DB.rollback()	
 		rval = False
 	
 	return rval
