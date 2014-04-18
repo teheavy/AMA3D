@@ -306,6 +306,9 @@ def die():
 	"""
 	()->()
 	Listen for die signal and return true iff die signal is present.
+	
+	:param: none
+	
 	"""
 	DIE = True
 
