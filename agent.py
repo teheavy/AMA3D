@@ -293,7 +293,7 @@ def hibernate():
 def die():
 	"""
 	()->()
-	When something is wrong with database, call die to shutdown the system.
+	Listen for die signal and return true iff die signal is present.
 	"""
 	DIE = True
 
