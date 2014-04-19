@@ -1,5 +1,18 @@
+#TODO:
+
+#-spawn (serailization), find resources
+#-load method and execute (track)
+#-check out os func kill -asdf 
+#-die function
+#-"db" has to be a global variable? or call open and close more often. (open whenever we need it?)
+#-write to log file: concurrency
+#-every function that deals with the db should check if connection db is opened if not, open it.
+#-implement isOnly to check whether this is the only running agent (we want to sustain one agent at all time)
+#---> or we might want to sustain a couple?
+
 #!/usr/bin/python
 import MySQLdb
+import subprocess
 import pprint
 import imp # for dynamically loading py codes
 import datetime
@@ -9,13 +22,15 @@ import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
 VERSION = "1.0.0"
-#This version assumes a specific database and relation format according to the entity-relational diagram 
-#presented in AMA3D
-AGENT_ID
+# This version assumes a specific database and relation format according to the entity-relational diagram 
+# presented in AMA3D
+AGENT_ID = ""
 DIE = False #
-ADMINFILE # file storing admin info
-MYEMAIL # email account of AMA3D
-PARAM # the data this agent is using right now
+ADMINFILE = "" # file storing admin info
+MYEMAIL = "" # email account of AMA3D
+PARAM = "" # the data this agent is using right now
+DB = "" # global db connection
+
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
@@ -30,12 +45,13 @@ def connect_db(user, password, dbname):
 	'''
 	try:
 		file = open
-		db = MySQLdb.connect(host=localhost, user, password, dbname)
+		global DB
+		DB = MySQLdb.connect(host=localhost, user, password, dbname)
 		return 0
 	except Exception, err:
 		mins = 0
 		while mins < 5:
-			db = MySQLdb.connect(host=localhost, user, password, dbname)
+			DB = MySQLdb.connect(host=localhost, user, password, dbname)
 			time.sleep(60)
 			mins+=1
 
@@ -43,7 +59,7 @@ def connect_db(user, password, dbname):
 		notify_admin(str(err))
 
 		# Rollback in case there is any error
-		bd.rollback()
+		DB.rollback()
 		return 1
 
 
@@ -78,7 +94,7 @@ def notify_admin(error):
 		s.quit() 
 
 
-def decide_next(time, threshold):
+def decide_next(seconds, threshold):
 	"""
 	(int, int) -> ()
 	Decide what to do next (brain of the agent).
@@ -88,15 +104,23 @@ def decide_next(time, threshold):
 	threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
 	"""
 	
-	while DIE == False:
+	count = 0
+	
+	while not die():
 
-		cursor = db.cursor()
-
+		global DB
+		cursor = DB.cursor()
+		
 		#check for number of TC
 		cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
 		results = cursor.fetchall
 		if results[0][0] == 0: #no open TC => idle
-			time.sleep(time)
+			count += 1
+			if count > 5 && not isOnly(): 
+				#if idling more than five times and this is not the last agent: terminate
+				terminate_self(False)
+			else:
+				time.sleep(seconds)
 		elif results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
 			freeMachines = find_resources()
 			spawn(freeMachines[0])
@@ -119,12 +143,12 @@ def decide_next(time, threshold):
 			
 			#update TriggeringCondition table
 			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
-					VALUES (%d, 'in_progress') WHERE id = %d""", (AGENT_ID, idTC))
+					VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
 			#update Agent table
 			cursor.execute("""UPDATE Agent SET \
 					StartTime = %s \
 					Status = 'busy' \
-					WHERE id = %d""", (datetime.datetime.now(), AGENT_ID))
+					WHERE id = %d"""  %  (datetime.datetime.now(), AGENT_ID))
 
 			#load and execute methods
 			load_methods(idTaskResource)
@@ -160,24 +184,27 @@ def load_methods(idTR):
 	Keyword arguments:
 	idTR -- id number of TaskResource table
 	"""
-	
+
     try:
 	    try: 
-			cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""",idTR)
+			cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""" % idTR)
 			code_path = cursor.fetchall		
 			code_dir = os.path.dirname(code_path)
 			fin = open(code_path, 'rb')
 			return imp.load_source(md5.new(code_path).hexdigest(), code_path, file)	
+		except ImportError, x:
+			traceback.print_exc(file = sys.stderr)
+			raise
 		finally:
 			try: fin.close()
 			except: pass
-    except ImportError, x:
-        traceback.print_exc(file = sys.stderr)
-        raise
+
     except:
         traceback.print_exc(file = sys.stderr)
         raise
 
+#TODO: see https://docs.python.org/2/library/subprocess.html#replacing-the-os-spawn-family
+#use subprocess.call() to execute the methods
 
 
 def record_log_activity(activity, agentID):
@@ -221,15 +248,17 @@ def terminate_self():
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
 	try:
-		cursor = db.cursor()
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+		global DB
+		cursor = DB.cursor()
+		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 		cursor.execute(sql1)
 		status = cursors.fetchall()[0]
 
 		if status == 0:
-			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d", AGENT_ID
+			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 			cursor.execute(sql2)
 			return true
+			
 
 	except Exception as err:
 		record_log_activity(str(err))
@@ -237,33 +266,35 @@ def terminate_self():
 
 
 def register():
-	"""
-	() -> boolean
-	Register agent information to the database and return the completion status: 0 for fail, 1 for success.
-	"""
+	"""() -> boolean
+        Register agent information to the database. Update global variable AGENT_ID
+        from database. Return the completion status.
+
+        : param:  none
+        : effects: global AGENT_ID is set to autoincremented AGENT table id
+        : returns: True for successful database insert, False otherwise.
+        """
 
 	rval = False
 
-	cursor = db.cursor()
-	registerTime = datetime.datetime.now()	
-	sql1 = """SELECT max(id) FROM Agent"""
-	sql2 = """INSERT INTO Agent \ 
-		(RegisterTime, StartTime, Status, NumTaskDone) \
-		VALUES (%s, 'not_yet_started', 1, 0)""", (registerTime)
-	try: 
-		cursor.execute(sql1)
-		results = cursor.fetchall()
-		global AGENT_ID = results[0]
-		try:
-			cursor.execute(sql2)
-			db.commit()
-			rval = True
-		except:
-			db.rollback()	
-			rval = False
-	except:
-		 rval = False
+	global DB
+	cursor = DB.cursor()
 
+	registerTime = datetime.datetime.now()	
+	
+	sql = """INSERT INTO Agent \ 
+		(RegisterTime, StartTime, Status, NumTaskDone) \
+		VALUES (%s, 'not_yet_started', 1, 0)"""  %  (registerTime)
+	try: 
+		cursor.execute(sql)
+		global AGENT_ID
+		AGENT_ID = DB.insert_id()
+		DB.commit() #might not need this?
+		rval = True
+	except:
+		DB.rollback()	
+		rval = False
+	
 	return rval
 
 #hibernate: do we need this? This is very similar to os's sleep command.
@@ -274,10 +305,17 @@ def hibernate():
 def die():
 	"""
 	()->()
-	When something is wrong with database, call die to shutdown the system.
+	Listen for die signal and return true iff die signal is present.
+	
+	:param: none
+	
 	"""
 	DIE = True
 
+def check_connection():
+	global DB
+	return DB.cursor()
+	
 
 #acting as the main function
 def essehozaibashsei():
