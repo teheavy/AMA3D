@@ -182,7 +182,7 @@ def load_methods(idTR):
 
 def record_log_activity(activity, agentID):
 	"""
-	(int, int) -> ()
+	(str, int) -> ()
 	Write activity summary of the agent to the log file.
 	
 	Keyword arguments:
