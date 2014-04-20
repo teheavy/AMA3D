@@ -15,6 +15,9 @@ import MySQLdb
 import subprocess
 import pprint
 import imp # for dynamically loading py codes
+import hashlib
+import os.path
+import traceback
 import datetime
 import time
 import csv # for parsing csv files
@@ -116,7 +119,7 @@ def decide_next(seconds, threshold):
 		results = cursor.fetchall
 		if results[0][0] == 0: #no open TC => idle
 			count += 1
-			if count > 5 && not isOnly(): 
+			if count > 5 and not isOnly(): 
 				#if idling more than five times and this is not the last agent: terminate
 				terminate_self(False)
 			else:
@@ -177,35 +180,46 @@ def find_resources():
 
 #dynamically load the task-specific codes
 def load_methods(idTR):
-	""" 
-	(int) -> boolean
+   """ 
+   (int) -> module
 	Dynamically load a module that its file path is known.
     
 	Keyword arguments:
 	idTR -- id number of TaskResource table
 	"""
+	
+   cursor = DB.cursor()
+# To catch error in retriving mysql data
+   try:
+		sqlString = "SELECT Codepath FROM TaskResource WHERE\
+		idTaskResource == %d" % idTR
+		cursor.execute(sqlString)
+#To retrive the string inside the first list of the tuple list
+		code_path = cursor.fetchall()[0][0]
 
-    try:
-	    try: 
-			cursor.execute("""SELECT Codepath FROM TaskResource WHERE idTaskResource == %d""" % idTR)
-			code_path = cursor.fetchall		
-			code_dir = os.path.dirname(code_path)
-			fin = open(code_path, 'rb')
-			return imp.load_source(md5.new(code_path).hexdigest(), code_path, file)	
+		try:
+	    	
+#Depend to the format of the mysqle tuple(full or relative path) this part
+#should be customized.
+			open_file = open(code_path, 'rb')
+#The hashlib.md5 generates a unique module identifier
+			my_module = imp.load_source(hashlib.md5(code_path).hexdigest(), \
+			code_path, open_file)
+			return 	my_module
+# Make sure that the file is not left open.
 		except ImportError, x:
 			traceback.print_exc(file = sys.stderr)
 			raise
 		finally:
-			try: fin.close()
-			except: pass
+			if open_file:
+				open_file.close()
 
-    except:
-        traceback.print_exc(file = sys.stderr)
-        raise
+
+   except _mysql.Error, e:
+	raise   
 
 #TODO: see https://docs.python.org/2/library/subprocess.html#replacing-the-os-spawn-family
 #use subprocess.call() to execute the methods
-
 
 def record_log_activity(activity, agentID):
 	"""
@@ -220,7 +234,7 @@ def record_log_activity(activity, agentID):
 	timestamp = get_date_time(time.localtime())
 
 	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(timestamp "\n" + agentID + ": " + activity + "\n")
+	log_activity.write(timestamp + "\n" + agentID + ": " + activity + "\n")
 	log_activity.close()
 
 
