@@ -206,10 +206,11 @@ def load_methods(idTR):
 			my_module = imp.load_source(hashlib.md5(code_path).hexdigest(), \
 			code_path, open_file)
 			return 	my_module
-# Make sure that the file is not left open.
+
 		except ImportError, x:
 			traceback.print_exc(file = sys.stderr)
 			raise
+# Make sure that the file is not left open.
 		finally:
 			if open_file:
 				open_file.close()
