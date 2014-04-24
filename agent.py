@@ -24,16 +24,7 @@ import csv # for parsing csv files
 import smtplib # for sending email messages
 from email.mime.text import MIMEText
 
-VERSION = "1.0.0"
-# This version assumes a specific database and relation format according to the entity-relational diagram 
-# presented in AMA3D
-AGENT_ID = ""
-DIE = False #
-ADMINFILE = "" # file storing admin info
-MYEMAIL = "" # email account of AMA3D
-PARAM = "" # the data this agent is using right now
-DB = "" # global db connection
-
+import AMA_globals as G # importing global variables
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
@@ -48,7 +39,7 @@ def connect_db(user, password, dbname):
 	'''
 	try:
 		file = open
-		global DB
+		DB = G.DB
 		DB = MySQLdb.connect(host=localhost, user, password, dbname)
 		return 0
 	except Exception, err:
@@ -74,6 +65,9 @@ def notify_admin(error):
 	Keyword arguments:
 	error -- the error message to be sent
 	"""
+	
+	ADMINFILE = G.ADMINFILE
+	MYEMAIL = G.MYEMAIL
 	
 	# assume admin info are stored in a file in the following format
 	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
@@ -110,8 +104,9 @@ def decide_next(seconds, threshold):
 	count = 0
 	
 	while not die():
-
-		global DB
+		
+		AGENT_ID = G.AGENT_ID
+		DB = G.DB
 		cursor = DB.cursor()
 		
 		#check for number of TC
@@ -141,7 +136,7 @@ def decide_next(seconds, threshold):
 			#globally stores parameters for to be used by load_methods
 			#so that the agent can spawn more agents with preloaded methods
 			#and just update PARAM
-			global PARAM
+			PARAM = G.PARAM
 			PARAM = results[0][2]
 			
 			#update TriggeringCondition table
@@ -263,7 +258,8 @@ def terminate_self():
 	If finished, delete the agent from status table and return true, otherwise return false.
 	'''
 	try:
-		global DB
+		AGENT_ID = G.AGENT_ID
+		DB = G.DB
 		cursor = DB.cursor()
 		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 		cursor.execute(sql1)
@@ -292,7 +288,7 @@ def register():
 
 	rval = False
 
-	global DB
+	DB = G.DB
 	cursor = DB.cursor()
 
 	registerTime = datetime.datetime.now()	
@@ -302,7 +298,7 @@ def register():
 		VALUES (%s, 'not_yet_started', 1, 0)"""  %  (registerTime)
 	try: 
 		cursor.execute(sql)
-		global AGENT_ID
+		AGENT_ID = G.AGENT_ID
 		AGENT_ID = DB.insert_id()
 		DB.commit() #might not need this?
 		rval = True
@@ -325,10 +321,10 @@ def die():
 	:param: none
 	
 	"""
-	DIE = True
+	G.DIE = True
 
 def check_connection():
-	global DB
+	DB = G.DB
 	return DB.cursor()
 	
 
