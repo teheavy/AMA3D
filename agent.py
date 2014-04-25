@@ -182,7 +182,7 @@ def load_methods(idTR):
 	Keyword arguments:
 	idTR -- id number of TaskResource table
 	"""
-	
+   DB = G.DB		
    cursor = DB.cursor()
 # To catch error in retriving mysql data
    try:
