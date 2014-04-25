@@ -31,9 +31,7 @@ def connect_db(user, password, dbname):
 	'''
 	(str, int, str) -> int
 	Given user information, try to connect database.
-	Return 0 when success, if the first connection is not successful, try connect 5 times, 
-	if failed, return 1 and notify user. 
-	
+	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
 	Input arguments:
 	user: your username
 	password: your password
@@ -151,8 +149,26 @@ def decide_next(seconds, threshold):
 					WHERE id = %d"""  %  (datetime.datetime.now(), AGENT_ID))
 
 			#load and execute methods
-			load_methods(idTaskResource)
+			status = load_methods(idTaskResource)
 			
+			
+			if status == 0:
+				# successfully completed the task
+				# remove TC and write to log file
+				# addition of new TC will be taken care of by program executed
+				cursor.execute("""DELETE FROM TriggeringCondition \
+					WHERE id = %d"""  %  (idTC))
+			
+			else:
+				# fail
+				# reset TC 
+					cursor.execute("""UPDATE TriggeringCondition SET \
+					Status = 'open' \
+					WHERE id = %d"""  %  (idTC))
+					record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
+				# if task failed, reset TC to open and log the errors
+				# limit the number of times to attempt the TC?
+
 	#if a die signal is present: self terminate
 	terminate_self()
 
@@ -177,85 +193,73 @@ def find_resources():
 
 #dynamically load the task-specific codes
 def load_methods(idTR):
-   """ 
-   (int) -> module
+	""" 
+	(int) -> module
 	Dynamically load a module that its file path is known.
     
 	Keyword arguments:
 	idTR -- id number of TaskResource table
 	"""
-   DB = G.DB		
-   cursor = DB.cursor()
-# To catch error in retriving mysql data
-   try:
-		sqlString = "SELECT Codepath FROM TaskResource WHERE\
-		idTaskResource == %d" % idTR
-		cursor.execute(sqlString)
-#To retrive the string inside the first list of the tuple list
-		code_path = cursor.fetchall()[0][0]
-
-		try:
-	    	
-#Depend to the format of the mysqle tuple(full or relative path) this part
-#should be customized.
-			open_file = open(code_path, 'rb')
-#The hashlib.md5 generates a unique module identifier
-			my_module = imp.load_source(hashlib.md5(code_path).hexdigest(), \
-			code_path, open_file)
-			return 	my_module
-
-		except ImportError, x:
-			traceback.print_exc(file = sys.stderr)
-			raise
-# Make sure that the file is not left open.
-		finally:
-			if open_file:
-				open_file.close()
+	DB = G.DB		
+	cursor = DB.cursor()
+	# To catch error in retriving mysql data
+	try:
+   		# retrieve absolute path of where AMA3D is installed
+   		base_path = cursor.execute("""SELECT Path FROM Machines WHERE\
+		idMachine == %d""" % G.MACHINE_ID).fetchall()[0][0]
+   		
+   		stuff = cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
+		idTaskResource == %d""" % idTR).fetchall()
+		
+		# retrieve the string inside the first list of the tuple list   		
+		rel_path = stuff[0]["Codepath"]
+		program = stuff[0]["Program"]
+		
+		code_path = base_path + "/" + rel_path
+		
+		# execute the program
+		status = subprocess.call([program, code_path, G.PARAM], shell=True)
+		
+		return status
+	
+	except: 
+		# db fails
+		return 4444
 
 
-   except _mysql.Error, e:
-	raise   
 
-#TODO: see https://docs.python.org/2/library/subprocess.html#replacing-the-os-spawn-family
-#use subprocess.call() to execute the methods
-
-def record_log_activity(activity, machineID):
+def record_log_activity(activity, agentID):
 	"""
 	(str, int) -> ()
-	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
-	This feature was added to handle the concurrency situation in which multiple agents 
-	are writing to the log table at a time.
+	Write activity summary of the agent to the log file.
 	
 	Keyword arguments:
-	str activity: contains the activity description to be added to log file. 
-	              It could be an error message as well.
+	str activity: contains the activity description to be added to log file.
 	int agentID: the unique agent identifier
 	"""
-	
-	
-	try:
-		DB = G.DB
-		cur = check_connection()         # returns DB cursor 
-		timestamp = time.asctime()
-		AGENT_ID = G.AGENT_ID
-		
-		# Insert and update LogTable in the database which has 4 attributes:
-		# AgentId      MachineId    TimeStamp    Activity
-		# -------      ---------    --------     --------
-		# -------      ---------    --------     --------
-	
-		sql = """INSERT INTO LogTable(AgentId, MachineID, TimeStamp, Activity) \
-		         VALUES ( %s, %s, %s, %s)"""  % (AGENT_ID, str(machineID), timestamp, str(activity))
-		         
-		cur.execute(sql)
-		DB.commit()
-		return True
 
-		
-	except Exception as err:
-		notify_admin(str(err))
-		return False
-		
+	timestamp = get_date_time(time.localtime())
+
+	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
+	log_activity.write(timestamp + "\n" + agentID + ": " + activity + "\n")
+	log_activity.close()
+
+
+def get_date_time(datetime):
+	"""
+	(str) -> str
+	Convert and return the struct time.localtime() as a workable date and time string.
+	
+	Helper function for record_log_activty().
+	Keyword arguments:
+	datetime: list with the date and time info
+	
+	return a str of the format (date, time)
+	"""
+	
+	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
+	time = str(datetime[3])+ "-" + str(datetime[4]) + "-" + str(datetime[5])
+	return (date+','+time)
 
 #agent terminates itself
 def terminate_self():
@@ -275,12 +279,12 @@ def terminate_self():
 		if status == 0:
 			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 			cursor.execute(sql2)
-			return True
+			return true
 			
 
 	except Exception as err:
 		record_log_activity(str(err))
-		return False 
+		return false 
 
 
 def register():
@@ -352,4 +356,10 @@ def essehozaibashsei():
 	
 	# Setup the email account, ask user for Adminfile location.
 	# Add code for listen for die signal from user.
-	
+
+# agent.py's assumption/ preconditions	
+# db set up. Including tables with the following info:
+	# a list of available machines (uername + passwords + host + abs path 
+	# of where the AMA3D folder is saved)
+# files on machines (a AMA3D directory with agent.py... etc)
+
