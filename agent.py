@@ -219,7 +219,7 @@ def load_methods(idTR):
 #TODO: see https://docs.python.org/2/library/subprocess.html#replacing-the-os-spawn-family
 #use subprocess.call() to execute the methods
 
-def record_log_activity(activity, agentID):
+def record_log_activity(activity, agentID, machineID):
 	"""
 	(str, int) -> ()
 	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
@@ -238,13 +238,13 @@ def record_log_activity(activity, agentID):
 		cur = check_connection()         # returns DB cursor 
 		timestamp = time.asctime()
 		
-		# Insert and update LogTable in the database which has 3 attributes:
-		# AgentId      TimeStamp    Activity
-		# -------      ---------    --------
-		# -------      ---------    --------
+		# Insert and update LogTable in the database which has 4 attributes:
+		# AgentId      MachineId    TimeStamp    Activity
+		# -------      ---------    --------     --------
+		# -------      ---------    --------     --------
 	
-		sql = """INSERT INTO LogTable(AgentId, TimeStamp, Activity) \
-		         VALUES ( %s, %s, %s)"""  % (str(agentID), timestamp, str(activity))
+		sql = """INSERT INTO LogTable(AgentId, MachineID, TimeStamp, Activity) \
+		         VALUES ( %s, %s, %s, %s)"""  % (str(agentID), str(machineID), timestamp, str(activity))
 		         
 		cur.execute(sql)
 		DB.commit()
@@ -278,7 +278,7 @@ def terminate_self():
 			
 
 	except Exception as err:
-		record_log_activity(str(err))
+		record_log_activity(str(err), AGENT_ID)
 		return False 
 
 
