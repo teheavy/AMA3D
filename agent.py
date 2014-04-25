@@ -31,7 +31,9 @@ def connect_db(user, password, dbname):
 	'''
 	(str, int, str) -> int
 	Given user information, try to connect database.
-	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
+	Return 0 when success, if the first connection is not successful, try connect 5 times, 
+	if failed, return 1 and notify user. 
+	
 	Input arguments:
 	user: your username
 	password: your password
@@ -220,35 +222,39 @@ def load_methods(idTR):
 def record_log_activity(activity, agentID):
 	"""
 	(str, int) -> ()
-	Write activity summary of the agent to the log file.
+	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
+	This feature was added to handle the concurrency situation in which multiple agents 
+	are writing to the log table at a time.
 	
 	Keyword arguments:
-	str activity: contains the activity description to be added to log file.
+	str activity: contains the activity description to be added to log file. 
+	              It could be an error message as well.
 	int agentID: the unique agent identifier
 	"""
-
-	timestamp = get_date_time(time.localtime())
-
-	log_activity = open("log_file.txt", "a+")  # creates a file object called log_file.txt
-	log_activity.write(timestamp + "\n" + agentID + ": " + activity + "\n")
-	log_activity.close()
-
-
-def get_date_time(datetime):
-	"""
-	(str) -> str
-	Convert and return the struct time.localtime() as a workable date and time string.
 	
-	Helper function for record_log_activty().
-	Keyword arguments:
-	datetime: list with the date and time info
 	
-	return a str of the format (date, time)
-	"""
+	try:
+		DB = G.DB
+		cur = check_connection()         # returns DB cursor 
+		timestamp = time.asctime()
+		
+		# Insert and update LogTable in the database which has 3 attributes:
+		# AgentId      TimeStamp    Activity
+		# -------      ---------    --------
+		# -------      ---------    --------
 	
-	date = str(datetime[0])+ "-" + str(datetime[1]) + "-" + str(datetime[2])
-	time = str(datetime[3])+ "-" + str(datetime[4]) + "-" + str(datetime[5])
-	return (date+','+time)
+		sql = """INSERT INTO LogTable(AgentId, TimeStamp, Activity) \
+		         VALUES ( %s, %s, %s)"""  % (str(agentID), timestamp, str(activity))
+		         
+		cur.execute(sql)
+		DB.commit()
+		return True
+
+		
+	except Exception as err:
+		notify_admin(str(err))
+		return False
+		
 
 #agent terminates itself
 def terminate_self():
@@ -268,12 +274,12 @@ def terminate_self():
 		if status == 0:
 			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 			cursor.execute(sql2)
-			return true
+			return True
 			
 
 	except Exception as err:
 		record_log_activity(str(err))
-		return false 
+		return False 
 
 
 def register():
