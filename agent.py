@@ -194,7 +194,7 @@ def find_resources():
 #dynamically load the task-specific codes
 def load_methods(idTR):
 	""" 
-	(int) -> module
+	(int) -> (int)
 	Dynamically load a module that its file path is known.
     
 	Keyword arguments:
