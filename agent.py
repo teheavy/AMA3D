@@ -12,10 +12,8 @@
 
 #!/usr/bin/python
 import MySQLdb
-import subprocess
+import subprocess # for running commands from command line
 import pprint
-import imp # for dynamically loading py codes
-import hashlib
 import os.path
 import traceback
 import datetime
