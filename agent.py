@@ -173,8 +173,13 @@ def decide_next(seconds, threshold):
 
 #spawn another agent: 
 #create an agent by using this agent as template	
-def spawn(machineID):
-	pass
+def spawn(machineID, idTC):
+	"""
+	(int, int) -> (int)
+	Spawn a new agent when the resources are insufficient using the existing triggering condition and the machineID.
+	"""
+	#copy a file 
+	
 	#return int
 	#potential methods:
 	#echo protocol? xml-rpc protocol?
