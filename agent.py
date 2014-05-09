@@ -202,16 +202,16 @@ def load_methods(idTR):
 	"""
 	DB = G.DB		
 	cursor = DB.cursor()
-	# To catch error in retriving mysql data
+
 	try:
-   		# retrieve absolute path of where AMA3D is installed
+   		# retrieve basepath where AMA3D is installed
    		base_path = cursor.execute("""SELECT Path FROM Machines WHERE\
 		idMachine == %d""" % G.MACHINE_ID).fetchall()[0][0]
-   		
+		
+   		#retrive the relative path and the program in which the module has been written
    		stuff = cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
 		idTaskResource == %d""" % idTR).fetchall()
 		
-		# retrieve the string inside the first list of the tuple list   		
 		rel_path = stuff[0]["Codepath"]
 		program = stuff[0]["Program"]
 		
