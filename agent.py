@@ -173,27 +173,29 @@ def decide_next(seconds, threshold):
 
 #spawn another agent: 
 #create an agent by using this agent as template	
-def spawn(machineID, idTC):
+def spawn(machineID):
 	"""
 	(int, int) -> (int)
-	Spawn a new agent when the resources are insufficient using the existing triggering condition and the machineID.
+	Spawn a new agent on the machine represented by the given machineID.
 	"""
 	#copy a file 
-	
 	#return int
 	#potential methods:
 	#echo protocol? xml-rpc protocol?
 	#ssh to remote machine, scp agent.py, then os.exec the script?
+	#queue the agent by priority
+	
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
 def find_resources():
-	pass
+	#changes: query for available machine by looking up the machine table
+	#         update machine table??
 	#return list of string or vector
 	#ssh remotely, run a "top" command to check for CPU?
 	#other ways to check without logging in?
 	#look at how distributed machines work...?
-
+	
 #dynamically load the task-specific codes
 def load_methods(idTR):
 	""" 
