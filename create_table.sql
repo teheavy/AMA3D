@@ -609,9 +609,13 @@ DROP TABLE IF EXISTS `Schematikon_2`.`Machines` ;
 
 CREATE TABLE IF NOT EXISTS `Schematikon_2`.`Machines` (
   `idMachine` BIGINT UNSIGNED NOT NULL,
+  `Host` VARCHAR(45) NOT NULL,
+  `Port` INT NOT NULL,
   `User` VARCHAR(45) NOT NULL,
   `Passw` VARCHAR(45) NOT NULL,
   `Path` VARCHAR(100) NULL,
+  `CPU` INT NOT NULL,
+  `FreeMem` INT NOT NULL,
   PRIMARY KEY (`idMachine`))
 ;
 
