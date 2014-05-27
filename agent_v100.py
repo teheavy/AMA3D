@@ -185,6 +185,24 @@ def spawn(machineID):
 	Spawn a new agent on the machine represented by the given machineID.
 	"""
 	
+	try:
+		machine_info = cursor.execute("""SELECT * FROM Machines WHERE idMachine == %d""" % G.MACHINE_ID).fetchall()[0]
+
+		port = machine_info[5]
+		host = machine_info[4]
+		path = machine_info[3]
+		password = machine_info[2]
+		user = machine_info[1]
+
+		agent_path = path + "/agent.py"
+		host_addr = user + "@" + host
+
+		# Find a way to connect remote computer using password
+		status = subprocess.call(['ssh', port, host_addr, '"python', path, '"'], shell=True)
+
+		return status
+	except:
+		return 4444
 	
 #update machine availabilities
 #helper function for find_resources
