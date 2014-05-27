@@ -181,21 +181,40 @@ def decide_next(seconds, threshold):
 #create an agent by using this agent as template	
 def spawn(machineID):
 	"""
-	(int, int) -> (int)
+	(int) -> (int)
 	Spawn a new agent on the machine represented by the given machineID.
 	"""
 	
 	
+#update machine availabilities
+#helper function for find_resources
+def update_machine():
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
 def find_resources():
-	#changes: query for available machine by looking up the machine table
-	#         update machine table??
-	#return list of string or vector
-	#ssh remotely, run a "top" command to check for CPU?
-	#other ways to check without logging in?
-	#look at how distributed machines work...?
+	"""
+	() -> (int)
+	Return the machineID of the "best" machine, -1 if no machine is free or 4444 if db failure.
+	"""
+	#In version 1.0.0, best machine = the machine with the biggest FreeMem
+	update_machine()
+	
+	DB = G.DB
+	cursor = DB.cursor()
+	
+	idBest = -1
+	
+	try:
+		result = cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""").fetchall()
+		freeMem = result[0]["FreeMem"]
+		if freeMem != 0:
+			idBest = result[0]["idMachine"]
+		return idBest
+		
+	except:
+		return 4444
+	
 	
 #dynamically load the task-specific codes
 def load_methods(idTR):
