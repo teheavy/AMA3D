@@ -10,6 +10,10 @@
 #-implement isOnly to check whether this is the only running agent (we want to sustain one agent at all time)
 #---> or we might want to sustain a couple?
 
+
+#Version 1.0.0
+#Spawn linearly: After spawning, the parent agent picks up a task. 
+
 #!/usr/bin/python
 import MySQLdb
 import subprocess # for running commands from command line
@@ -117,10 +121,12 @@ def decide_next(seconds, threshold):
 				terminate_self(False)
 			else:
 				time.sleep(seconds)
-		elif results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
-			freeMachines = find_resources()
-			spawn(freeMachines[0])
-		else: #0 < number of TC < threshold => work (note: impossible to have negative number of TC)
+		else:
+			if results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
+				freeMachines = find_resources()
+				spawn(freeMachines[0])
+				
+			#0 < number of TC < threshold => work (note: impossible to have negative number of TC)
 		
 			#pick the first open task 
 			#Future implementation: can make agent smarter by choosing a task by type
@@ -178,12 +184,7 @@ def spawn(machineID):
 	(int, int) -> (int)
 	Spawn a new agent on the machine represented by the given machineID.
 	"""
-	#copy a file 
-	#return int
-	#potential methods:
-	#echo protocol? xml-rpc protocol?
-	#ssh to remote machine, scp agent.py, then os.exec the script?
-	#queue the agent by priority
+	
 	
 
 #return a list of available machines by their machineID 
