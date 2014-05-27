@@ -189,6 +189,25 @@ def spawn(machineID):
 #update machine availabilities
 #helper function for find_resources
 def update_machine():
+	"""
+	() -> (int)
+	For every machine in the Machine table, update the machine information. \
+	Return 0 upon success, 1 otherwise.
+	"""
+	
+	DB = G.DB
+	cursor = DB.cursor()
+	
+	
+	machines = cursor.execute( ........)
+		
+	for ....
+		#ssh into the machine
+	
+		#find FreeMem 
+		subprocess.call("cat /proc/meminfo | grep "MemFree:" | sed 's/\s\+/\*/g' | cut -d "*" -f 2", shell=True)
+	
+	return 0
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
