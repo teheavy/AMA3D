@@ -2,6 +2,7 @@
 #-Write ERROR Number Handbook
 
 
+
 #Version 1.0.0
 #Spawn linearly: After spawning, the parent agent picks up a task. 
 
@@ -50,13 +51,13 @@ def connect_db(user, password, dbname):
 		return 1
 
 
-def notify_admin(error):
+def notify_admin(msg):
 	"""
 	(str) -> ()
-	Send an email including the error message to the admin(s).
+	Send an email including the message string to the admin(s).
 	
 	Keyword arguments:
-	error -- the error message to be sent
+	msg -- the message to be sent
 	"""
 	
 	ADMINFILE = G.ADMINFILE
@@ -64,7 +65,7 @@ def notify_admin(error):
 	
 	# assume admin info are stored in a file in the following format
 	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
-	msg = MIMEText(error);
+	msg = MIMEText(msg);
 	msg['Subject'] = "AMA3D - Error"
 	msg['From'] = MYEMAIL	
 
@@ -77,7 +78,7 @@ def notify_admin(error):
 		count+=1
 		admin = listAdmin[count][1] 
 		msg['To'] = admin
-		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "----AMA3D"
+		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "All the best, \nAMA3D"
 		# sending message through localhost
 		s = smtplib.SMTP('localhost')
 		s.sendmail(MYEMAIL, admin, msg.as_string())
@@ -102,9 +103,15 @@ def decide_next(seconds, threshold):
 		DB = G.DB
 		cursor = DB.cursor()
 		
-		#check for number of TC
-		cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
-		results = cursor.fetchall
+		try:
+			
+			#check for number of TC
+			cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
+			results = cursor.fetchall
+		except Exception as err:
+			notify_admin(str(err))
+			terminate_self()
+			
 		if results[0][0] == 0: #no open TC => idle
 			count += 1
 			if count > 5 and not isOnly(): 
@@ -114,16 +121,27 @@ def decide_next(seconds, threshold):
 				time.sleep(seconds)
 		else:
 			if results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
-				freeMachines = find_resources()
-				spawn(freeMachines[0])
 				
+				machineID = find_resources()
+				
+				while machineID == -1: #while no machine available
+					time.sleep(3)
+					spawn(machineID)
+				
+				#if spawn fails, notify admin (done by spawn) and continue the work.
+					
 			#0 < number of TC < threshold => work (note: impossible to have negative number of TC)
 		
-			#pick the first open task 
-			#Future implementation: can make agent smarter by choosing a task by type
-			cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
-					FROM TriggeringCondition WHERE Status = open""")
-			results = cursor.fetchall
+			try:
+				#pick the first open task 
+				#Future implementation: can make agent smarter by choosing a task by type
+				cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
+						FROM TriggeringCondition WHERE Status = open""")
+				results = cursor.fetchall
+			except Exception as err:
+				notify_admin(str(err))
+				terminate_self()
+			
 			idTC = results[0][0]
 			idTaskResource = results[0][1]
 			IsLast = results[0][3]
@@ -134,40 +152,45 @@ def decide_next(seconds, threshold):
 			PARAM = G.PARAM
 			PARAM = results[0][2]
 			
-			#update TriggeringCondition table
-			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
-					VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
-			#update Agent table
-			cursor.execute("""UPDATE Agent SET \
-					StartTime = %s \
-					Status = 'busy' \
-					Priority = %d \
-					WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
-
-			#load and execute methods
-			status = load_methods(idTaskResource)
-			
-			#update priority
-			cursor.execute("""UPDATE Agent SET \
-					Priority = %d \
-					WHERE id = %d"""  %  (101, AGENT_ID))
-			
-			if status == 0:
-				# successfully completed the task
-				# remove TC and write to log file
-				# addition of new TC will be taken care of by program executed
-				cursor.execute("""DELETE FROM TriggeringCondition \
-					WHERE id = %d"""  %  (idTC))
-			
-			else:
-				# fail
-				# reset TC 
-					cursor.execute("""UPDATE TriggeringCondition SET \
-					Status = 'open' \
-					WHERE id = %d"""  %  (idTC))
-					record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
-				# if task failed, reset TC to open and log the errors
-				# limit the number of times to attempt the TC?
+			try: 
+				#update TriggeringCondition table
+				cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
+						VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
+				#update Agent table
+				cursor.execute("""UPDATE Agent SET \
+						StartTime = %s \
+						Status = 'busy' \
+						Priority = %d \
+						WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
+	
+				#load and execute methods
+				status = load_methods(idTaskResource)
+				
+				#update priority
+				cursor.execute("""UPDATE Agent SET \
+						Priority = %d \
+						WHERE id = %d"""  %  (101, AGENT_ID))
+				
+				if status == 0:
+					# successfully completed the task
+					# remove TC and write to log file
+					# addition of new TC will be taken care of by program executed
+					cursor.execute("""DELETE FROM TriggeringCondition \
+						WHERE id = %d"""  %  (idTC))
+				
+				else:
+					# fail
+					# reset TC 
+						cursor.execute("""UPDATE TriggeringCondition SET \
+						Status = 'open' \
+						WHERE id = %d"""  %  (idTC))
+						record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
+					# if task failed, reset TC to open and log the errors
+					# limit the number of times to attempt the TC?
+			except Exception as err:
+				DB.rollback()
+				notify_admin(str(err))
+				terminate_self()
 
 	#if a die signal is present: self terminate
 	terminate_self()
@@ -207,8 +230,9 @@ def spawn(machineID):
 
 		return status
 	except:
-		return 4444
-	
+		record_log_activity("spawn: db failure or unsuccessful remote subprocess call.", G.DB.MACHINE_ID, True)
+		return 4444	
+		
 #update machine availabilities
 #helper function for find_resources
 def update_machine():
@@ -243,7 +267,8 @@ def update_machine():
 
 		return 0
 	except:
-		return 4444	
+		record_log_activity("update_machine: db failure or unsuccessful remote subprocess call.", G.DB.MACHINE_ID, True)
+		return 4444
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
@@ -267,6 +292,7 @@ def find_resources():
 		return idBest
 		
 	except:
+		record_log_activity("find_resources: db failure.", G.DB.MACHINE_ID, True)
 		return 4444
 	
 	
@@ -302,14 +328,14 @@ def load_methods(idTR):
 		return status
 	
 	except: 
-		# db fails
+		record_log_activity("load_methods: db failure or unsuccessful subprocess call.", G.DB.MACHINE_ID, True)
 		return 4444
 
 
 
-def record_log_activity(activity, machineID):
+def record_log_activity(activity, machineID, notify?):
 	"""
-	(str, int) -> ()
+	(str, int, boolea~) -> ()
 	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
 	This feature was added to handle the concurrency situation in which multiple agents 
 	are writing to the log table at a time.
@@ -317,13 +343,14 @@ def record_log_activity(activity, machineID):
 	Keyword arguments:
 	str activity: contains the activity description to be added to log file. 
 	              It could be an error message as well.
+	              Error format: <function name: possible causes of failure.> 
 	int agentID: the unique agent identifier
 	"""
-
+	
 
 	try:
 		DB = G.DB
-		cur = check_connection()         # returns DB cursor 
+		cur = DB.cursor()
 		timestamp = time.asctime()
 		AGENT_ID = G.AGENT_ID
 
@@ -338,7 +365,9 @@ def record_log_activity(activity, machineID):
 		cur.execute(sql)
 		DB.commit()
 		return True
-
+		if notify? == True:
+			notify_admin(activity + "\nAgent ID: " + AGENT_ID + "\nMachine ID: " + machineID + "\nAMA3D Time: " + timestamp)
+			
 	except Exception as err:
 		notify_admin(str(err))
 		return False
@@ -363,10 +392,11 @@ def terminate_self():
 			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 			cursor.execute(sql2)
 			return true
-			
+		DB.close()	
 
 	except Exception as err:
-		record_log_activity(str(err))
+		DB.close()
+		record_log_activity(str(err)) #try this error msg 
 		return false 
 
 
@@ -379,9 +409,6 @@ def register():
         : effects: global AGENT_ID is set to autoincremented AGENT table id
         : returns: True for successful database insert, False otherwise.
         """
-
-	rval = False
-
 	DB = G.DB
 	cursor = DB.cursor()
 
@@ -395,16 +422,10 @@ def register():
 		AGENT_ID = G.AGENT_ID
 		AGENT_ID = DB.insert_id()
 		DB.commit() #might not need this?
-		rval = True
-	except:
-		DB.rollback()	
-		rval = False
-	
-	return rval
-
-#hibernate: do we need this? This is very similar to os's sleep command.
-def hibernate():
-	pass
+		return True
+	except Exception as err:
+		record_log_activity(str(err)) #try this error msg 
+		return False
 
 #die
 def die():
@@ -417,10 +438,6 @@ def die():
 	"""
 	G.DIE = True
 
-def check_connection():
-	DB = G.DB
-	return DB.cursor()
-	
 
 #acting as the main function
 def essehozaibashsei():
@@ -446,3 +463,6 @@ def essehozaibashsei():
 	# of where the AMA3D folder is saved)
 # files on machines (a AMA3D directory with agent.py... etc)
 
+if __name__ == '__main__':
+	essehozaibashsei()
+	
