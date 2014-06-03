@@ -198,7 +198,10 @@ def spawn(machineID):
 		host_addr = user + "@" + host
 
 		# Find a way to connect remote computer using password
-		status = subprocess.call(['ssh', port, host_addr, '"python', path, '"'], shell=True)
+		if port == "":
+			status = subprocess.call(['ssh', host_addr, 'python', agent_path], shell=True)
+		else:
+			status = subprocess.call(['ssh', '-p', port, host_addr, 'python', agent_path], shell=True)
 
 		return status
 	except:
@@ -244,8 +247,7 @@ def find_resources():
 	
 	try:
 		result = cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""").fetchall()
-		freeMem = result[0]["FreeMem"]
-		if freeMem != 0:
+		if result[0]["FreeMem"] != 0:
 			idBest = result[0]["idMachine"]
 		return idBest
 		
