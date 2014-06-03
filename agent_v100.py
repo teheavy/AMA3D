@@ -28,7 +28,7 @@ import AMA_globals as G # importing global variables
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
-	'''
+	"""
 	(str, int, str) -> int
 	Given user information, try to connect database.
 	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
@@ -36,7 +36,7 @@ def connect_db(user, password, dbname):
 	user: your username
 	password: your password
 	dbname: the database we are going to log in
-	'''
+	"""
 	try:
 		file = open
 		DB = G.DB
@@ -153,7 +153,11 @@ def decide_next(seconds, threshold):
 
 			#load and execute methods
 			status = load_methods(idTaskResource)
-			  
+			
+			#update priority
+			cursor.execute("""UPDATE Agent SET \
+					Priority = %d \
+					WHERE id = %d"""  %  (101, AGENT_ID))
 			
 			if status == 0:
 				# successfully completed the task
@@ -175,12 +179,14 @@ def decide_next(seconds, threshold):
 	#if a die signal is present: self terminate
 	terminate_self()
 
-def calculate_priority(idTC)
+def calculate_priority(idTC):
 	"""
 	(int) -> (int)
 	Calculate a priority number for current task.
-	"""
-	pass
+	Return priority (an integer in [0,100], 0 being the highest priority.)
+	"""	
+	#dummy function
+	return 0
 
 #spawn another agent: 
 #create an agent by using this agent as template	
