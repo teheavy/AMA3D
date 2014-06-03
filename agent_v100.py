@@ -162,7 +162,13 @@ def decide_next(seconds, threshold):
 						Status = 'busy' \
 						Priority = %d \
 						WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
-	
+				DB.commit()
+			except Exception as err:
+				DB.rollback()
+				notify_admin(str(err))
+				terminate_self()
+			
+			try:
 				#load and execute methods
 				status = load_methods(idTaskResource)
 				
@@ -170,7 +176,13 @@ def decide_next(seconds, threshold):
 				cursor.execute("""UPDATE Agent SET \
 						Priority = %d \
 						WHERE id = %d"""  %  (101, AGENT_ID))
-				
+				DB.commit()
+			except Exception as err:
+				DB.rollback()
+				notify_admin(str(err))
+				terminate_self()
+			
+			try:
 				if status == 0:
 					# successfully completed the task
 					# remove TC and write to log file
@@ -187,6 +199,7 @@ def decide_next(seconds, threshold):
 						record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
 					# if task failed, reset TC to open and log the errors
 					# limit the number of times to attempt the TC?
+					DB.commit()
 			except Exception as err:
 				DB.rollback()
 				notify_admin(str(err))
@@ -264,7 +277,7 @@ def update_machine():
 			
 			
 			cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[i]['idMachine'])))
-
+			DB.commit()
 		return 0
 	except:
 		record_log_activity("update_machine: db failure or unsuccessful remote subprocess call.", G.DB.MACHINE_ID, True)
@@ -392,9 +405,10 @@ def terminate_self():
 			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
 			cursor.execute(sql2)
 			return true
-		DB.close()	
-
+		DB.commit()
+		DB.close()
 	except Exception as err:
+		DB.rollback()
 		DB.close()
 		record_log_activity(str(err)) #try this error msg 
 		return false 
