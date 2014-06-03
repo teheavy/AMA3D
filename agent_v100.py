@@ -1,11 +1,4 @@
-#TODO:
-
-#-spawn (serailization), find resources
-#-"db" has to be a global variable? or call open and close more often. (open whenever we need it?)
-#-write to log file: concurrency
-#-every function that deals with the db should check if connection db is opened if not, open it.
-#-implement isOnly to check whether this is the only running agent (we want to sustain one agent at all time)
-#---> or we might want to sustain a couple?
+#TODO
 #-Write ERROR Number Handbook
 
 
