@@ -598,6 +598,7 @@ CREATE TABLE IF NOT EXISTS `Schematikon_2`.`Agent` (
   `StartTime` DATETIME NOT NULL,
   `Status` INT NOT NULL,
   `NumTaskDone` INT NOT NULL,
+  `Priority` INT NOT NULL,
   PRIMARY KEY (`id`))
 ;
 
