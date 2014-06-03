@@ -1,14 +1,12 @@
 #TODO:
 
 #-spawn (serailization), find resources
-#-load method and execute (track)
-#-check out os func kill -asdf 
-#-die function
 #-"db" has to be a global variable? or call open and close more often. (open whenever we need it?)
 #-write to log file: concurrency
 #-every function that deals with the db should check if connection db is opened if not, open it.
 #-implement isOnly to check whether this is the only running agent (we want to sustain one agent at all time)
 #---> or we might want to sustain a couple?
+#-Write ERROR Number Handbook
 
 
 #Version 1.0.0
@@ -185,17 +183,15 @@ def spawn(machineID):
 	Spawn a new agent on the machine represented by the given machineID.
 	"""
 	
+	DB = G.DB
+	cursor = DB.cursor()
+	
 	try:
 		machine_info = cursor.execute("""SELECT * FROM Machines WHERE idMachine == %d""" % G.MACHINE_ID).fetchall()[0]
 
 		port = machine_info[5]
-		host = machine_info[4]
-		path = machine_info[3]
-		password = machine_info[2]
-		user = machine_info[1]
-
-		agent_path = path + "/agent.py"
-		host_addr = user + "@" + host
+		agent_path = machine_info[3] + "/agent.py" #software folder
+		host_addr = machine_info[1] + "@" + machine_info[4] #user@host
 
 		# Find a way to connect remote computer using password
 		if port == "":
@@ -219,16 +215,29 @@ def update_machine():
 	DB = G.DB
 	cursor = DB.cursor()
 	
-	
-	machines = cursor.execute( ........)
+	try:
+		machine_info = cursor.execute("""SELECT * FROM Machines""").fetchall()
+
 		
-	for ....
-		#ssh into the machine
+		
+		for i < len(machine_info):
+			#ssh into the machine
+			port = machine_info[5]
+			agent_path = machine_info[3] + "/agent.py" #software folder
+			host_addr = machine_info[1] + "@" + machine_info[4] #user@host
 	
-		#find FreeMem 
-		subprocess.call("cat /proc/meminfo | grep "MemFree:" | sed 's/\s\+/\*/g' | cut -d "*" -f 2", shell=True)
-	
-	return 0
+			#find FreeMem 
+			if port == "":
+				output = subprocess.check_output(['ssh', host_addr, 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'], shell=True)
+			else:
+				output = subprocess.check_output(['ssh', '-p', port, host_addr, 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'], shell=True)
+			
+			
+			cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[0])))
+
+		return 0
+	except:
+		return 4444	
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
