@@ -148,11 +148,12 @@ def decide_next(seconds, threshold):
 			cursor.execute("""UPDATE Agent SET \
 					StartTime = %s \
 					Status = 'busy' \
-					WHERE id = %d"""  %  (datetime.datetime.now(), AGENT_ID))
+					Priority = %d \
+					WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
 
 			#load and execute methods
 			status = load_methods(idTaskResource)
-			
+			  
 			
 			if status == 0:
 				# successfully completed the task
@@ -174,6 +175,12 @@ def decide_next(seconds, threshold):
 	#if a die signal is present: self terminate
 	terminate_self()
 
+def calculate_priority(idTC)
+	"""
+	(int) -> (int)
+	Calculate a priority number for current task.
+	"""
+	pass
 
 #spawn another agent: 
 #create an agent by using this agent as template	
@@ -189,9 +196,9 @@ def spawn(machineID):
 	try:
 		machine_info = cursor.execute("""SELECT * FROM Machines WHERE idMachine == %d""" % G.MACHINE_ID).fetchall()[0]
 
-		port = machine_info[5]
-		agent_path = machine_info[3] + "/agent.py" #software folder
-		host_addr = machine_info[1] + "@" + machine_info[4] #user@host
+		port = machine_info['Port']
+		agent_path = machine_info['Path'] + "/agent.py" #software folder
+		host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
 
 		# Find a way to connect remote computer using password
 		if port == "":
@@ -222,9 +229,9 @@ def update_machine():
 		
 		for i < len(machine_info):
 			#ssh into the machine
-			port = machine_info[5]
-			agent_path = machine_info[3] + "/agent.py" #software folder
-			host_addr = machine_info[1] + "@" + machine_info[4] #user@host
+			port = machine_info[i]['Port']
+			agent_path = machine_info[i]['Path'] + "/agent.py" #software folder
+			host_addr = machine_info[i]['User'] + "@" + machine_info[i]['Host'] #user@host
 	
 			#find FreeMem 
 			if port == "":
@@ -233,7 +240,7 @@ def update_machine():
 				output = subprocess.check_output(['ssh', '-p', port, host_addr, 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'], shell=True)
 			
 			
-			cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[0])))
+			cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[i]['idMachine'])))
 
 		return 0
 	except:
