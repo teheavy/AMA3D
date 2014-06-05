@@ -428,11 +428,10 @@ def register():
 
 	registerTime = datetime.datetime.now()	
 	
-	sql = """INSERT INTO Agent \ 
-		(RegisterTime, StartTime, Status, NumTaskDone) \
-		VALUES (%s, 'not_yet_started', 1, 0)"""  %  (registerTime)
 	try: 
-		cursor.execute(sql)
+		cursor.execute("""INSERT INTO Agent \ 
+		(RegisterTime, StartTime, Status, NumTaskDone) \
+		VALUES (%s, 'not_yet_started', 1, 0)"""  %  (registerTime))
 		AGENT_ID = G.AGENT_ID
 		AGENT_ID = DB.insert_id()
 		DB.commit() #might not need this?
