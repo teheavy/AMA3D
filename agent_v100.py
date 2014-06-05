@@ -1,10 +1,14 @@
 #TODO
-#-Write ERROR Number Handbook
-
+	# Setup a email account for agent.
 
 
 #Version 1.0.0
+# agent.py's assumption/ preconditions	
+# db set up. Including tables with the following info:
+	# a list of available machines (uername + passwords + host + abs path 
+	# of where the AMA3D folder is saved)
 #Spawn linearly: After spawning, the parent agent picks up a task. 
+
 
 #!/usr/bin/python
 import MySQLdb
@@ -32,14 +36,14 @@ def connect_db(user, password, dbname):
 	dbname: the database we are going to log in
 	"""
 	try:
-		file = open
+		#file = open
 		DB = G.DB
-		DB = MySQLdb.connect(G.HOST, user, password, dbname)
+		DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
 		return 0
 	except Exception, err:
 		mins = 0
 		while mins < 5:
-			DB = MySQLdb.connect(G.HOST, user, password, dbname)
+			DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
 			time.sleep(60)
 			mins+=1
 
@@ -455,25 +459,23 @@ def die():
 #acting as the main function
 def essehozaibashsei():
 
-	#configure some variables here? maybe better to pass in to main?
-	time
-	threshold
-	# Setup a email account for agent.
-	# Add a file in database for agent account.
-	# Ask for the agent account file path.
-	if connect_db(filepath): #TO-DO: add codes to open, read and parse file in connect_db or here?
+	# May change these to global variables
+	TIME = 2
+	THRESHOLD = 4
+
+	# Parse File
+	file = open("Account", "r")
+	parsed = file.readline().split()
+	
+	if connect_db(parsed[0], parsed[1], parsed[2]): 
 		register()
 		#check DIE here instead of in decide_next?
 		#while !DIE
-		decide_next(time, threshold)
+		decide_next(TIME, THRESHOLD)
 	
 	# Setup the email account, ask user for Adminfile location.
-	# Add code for listen for die signal from user.
+	# Add code for listen for die signal from user
 
-# agent.py's assumption/ preconditions	
-# db set up. Including tables with the following info:
-	# a list of available machines (uername + passwords + host + abs path 
-	# of where the AMA3D folder is saved)
 # files on machines (a AMA3D directory with agent.py... etc)
 
 if __name__ == '__main__':
