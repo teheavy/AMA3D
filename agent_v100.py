@@ -34,12 +34,12 @@ def connect_db(user, password, dbname):
 	try:
 		file = open
 		DB = G.DB
-		DB = MySQLdb.connect(host=localhost, user, password, dbname)
+		DB = MySQLdb.connect(G.HOST, user, password, dbname)
 		return 0
 	except Exception, err:
 		mins = 0
 		while mins < 5:
-			DB = MySQLdb.connect(host=localhost, user, password, dbname)
+			DB = MySQLdb.connect(G.HOST, user, password, dbname)
 			time.sleep(60)
 			mins+=1
 
@@ -199,7 +199,7 @@ def decide_next(seconds, threshold):
 						record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
 					# if task failed, reset TC to open and log the errors
 					# limit the number of times to attempt the TC?
-					DB.commit()
+				DB.commit()
 			except Exception as err:
 				DB.rollback()
 				notify_admin(str(err))
@@ -263,7 +263,7 @@ def update_machine():
 
 		
 		
-		for i < len(machine_info):
+		for i in range(0, len(machine_info)):
 			#ssh into the machine
 			port = machine_info[i]['Port']
 			agent_path = machine_info[i]['Path'] + "/agent.py" #software folder
@@ -346,7 +346,7 @@ def load_methods(idTR):
 
 
 
-def record_log_activity(activity, machineID, notify?):
+def record_log_activity(activity, machineID, notify):
 	"""
 	(str, int, boolea~) -> ()
 	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
@@ -378,7 +378,7 @@ def record_log_activity(activity, machineID, notify?):
 		cur.execute(sql)
 		DB.commit()
 		return True
-		if notify? == True:
+		if notify == True:
 			notify_admin(activity + "\nAgent ID: " + AGENT_ID + "\nMachine ID: " + machineID + "\nAMA3D Time: " + timestamp)
 			
 	except Exception as err:
