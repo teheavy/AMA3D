@@ -55,38 +55,34 @@ def connect_db(user, password, dbname):
 		return 1
 
 
-def notify_admin(msg):
-	"""
-	(str) -> ()
-	Send an email including the message string to the admin(s).
-	
-	Keyword arguments:
-	msg -- the message to be sent
-	"""
-	
-	ADMINFILE = G.ADMINFILE
-	MYEMAIL = G.MYEMAIL
-	
-	# assume admin info are stored in a file in the following format
-	# Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
-	msg = MIMEText(msg);
-	msg['Subject'] = "AMA3D - Error"
-	msg['From'] = MYEMAIL	
+def notify_admin(m):
+        """
+        (str) -> ()
+        Send an email including the message string to the admin(s).
+        
+        Keyword arguments:
+        msg -- the message to be sent
+        """
 
-	file = open(ADMINFILE, "r")
-	parsed = csv.reader(file, delimiter="\t")
-	listAdmin = list(parsed)
-	count = 0
+        ADMINFILE = G.ADMINFILE
+        MYEMAIL = G.MYEMAIL
 
-	for line in parsed:
-		count+=1
-		admin = listAdmin[count][1] 
-		msg['To'] = admin
-		msg = "Dear " + listAdmin[count][0] + ",\n" + msg + "\n" + "All the best, \nAMA3D"
-		# sending message through localhost
-		s = smtplib.SMTP('localhost')
-		s.sendmail(MYEMAIL, admin, msg.as_string())
-		s.quit() 
+        # assume admin info are stored in a file in the following format
+        # Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
+
+        with open(ADMINFILE, "r") as csvfile:
+            reader = csv.reader(csvfile, delimiter="\t")
+            for line in reader:
+                msg = MIMEText("Dear " + line[0] + ",\n" + m  + "\n" + "All the best, \nAMA3D Happy Agent")
+                msg['Subject'] = "AMA3D - Error"
+                msg['From'] = MYEMAIL
+                msg['To'] = line[1]
+
+                print msg.as_string()
+                # sending message through localhost
+                s = smtplib.SMTP('localhost')
+                s.sendmail(MYEMAIL, line[1], msg.as_string())
+                s.quit()
 
 
 def decide_next(seconds, threshold):
