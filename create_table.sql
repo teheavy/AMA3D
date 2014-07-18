@@ -589,12 +589,14 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`TaskResource` (
 -- -----------------------------------------------------
 -- Table `AMA3D`.`Agent`
 -- -----------------------------------------------------
+
+
 DROP TABLE IF EXISTS `AMA3D`.`Agent` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Agent` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `idParent` INT NOT NULL,
-  `RegisterTime` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  --`idParent` INT NOT NULL, //Figure out why we need idParent
+  `RegisterTime` DATETIME NOT NULL,
   `StartTime` DATETIME DEFAULT 0,
   `Status` INT NOT NULL,
   `NumTaskDone` INT NOT NULL,
