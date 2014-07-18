@@ -26,33 +26,31 @@ import AMA_globals as G # importing global variables
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
-	"""
-	(str, int, str) -> int
-	Given user information, try to connect database.
-	Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
-	Input arguments:
-	user: your username
-	password: your password
-	dbname: the database we are going to log in
-	"""
-	try:
-		#file = open
-		DB = G.DB
-		DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
-		return 0
-	except Exception, err:
-		mins = 0
-		while mins < 5:
-			DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
-			time.sleep(60)
-			mins+=1
+        """
+        (str, int, str) -> int
+        Given user information, try to connect database.
+        Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
+        Input arguments:
+        user: your username
+        password: your password
+        dbname: the database we are going to log in
+        """
+        try:
+                G.DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
+                return 0
+        except Exception, err:
+                mins = 0
+                while mins < 5:
+                        DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
+                        time.sleep(60)
+                        mins+=1
 
-		record_log_activity(str(err))
-		notify_admin(str(err))
+                record_log_activity(str(err))
+                notify_admin(str(err))
 
-		# Rollback in case there is any error
-		DB.rollback()
-		return 1
+                # Rollback in case there is any error
+                DB.rollback()
+                return 1
 
 
 def notify_admin(m):
@@ -415,30 +413,31 @@ def terminate_self():
 
 
 def register():
-	"""() -> boolean
+        """() -> boolean
         Register agent information to the database. Update global variable AGENT_ID
         from database. Return the completion status.
 
-        : param:  none
+        : param: none
         : effects: global AGENT_ID is set to autoincremented AGENT table id
         : returns: True for successful database insert, False otherwise.
         """
-	DB = G.DB
-	cursor = DB.cursor()
+        DB = G.DB
+        cursor = DB.cursor()
 
-	registerTime = datetime.datetime.now()	
-	
-	try: 
-		cursor.execute("""INSERT INTO Agent \ 
-		(RegisterTime, StartTime, Status, NumTaskDone) \
-		VALUES (%s, 'not_yet_started', 1, 0)"""  %  (registerTime))
-		AGENT_ID = G.AGENT_ID
-		AGENT_ID = DB.insert_id()
-		DB.commit() #might not need this?
-		return True
-	except Exception as err:
-		record_log_activity(str(err)) #try this error msg 
-		return False
+        registerTime = datetime.datetime.now()
+
+        try:
+                cursor.execute("""INSERT INTO AgentTest \
+                (RegisterTime, Status, NumTaskDone, Priority) \
+                VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
+                AGENT_ID = G.AGENT_ID
+                AGENT_ID = DB.insert_id()
+                DB.commit() #might not need this?
+                return True
+        except Exception as err:
+                print registerTime
+                print "register error"
+                return False
 
 #die
 def die():
