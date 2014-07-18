@@ -435,8 +435,8 @@ def register():
                 DB.commit() #might not need this?
                 return True
         except Exception as err:
-                print registerTime
-                print "register error"
+        	notify_admin("register failed")
+                #print "register error"
                 return False
 
 #die
