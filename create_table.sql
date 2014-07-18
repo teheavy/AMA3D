@@ -594,14 +594,13 @@ DROP TABLE IF EXISTS `AMA3D`.`Agent` ;
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Agent` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `idParent` INT NOT NULL,
-  `RegisterTime` DATETIME NOT NULL,
-  `StartTime` DATETIME NOT NULL,
+  `RegisterTime` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `StartTime` DATETIME DEFAULT 0,
   `Status` INT NOT NULL,
   `NumTaskDone` INT NOT NULL,
   `Priority` INT NOT NULL,
   PRIMARY KEY (`id`))
 ;
-
 
 -- -----------------------------------------------------
 -- Table `AMA3D`.`Machines`
