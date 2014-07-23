@@ -620,6 +620,18 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Machines` (
   PRIMARY KEY (`idMachine`))
 ;
 
+-- -----------------------------------------------------
+-- Table `AMA3D`.`Log`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `AMA3D`.`Log` ;
+CREATE TABLE IF NOT EXISTS `AMA3D`.`Log` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `AgentID` INT NOT NULL,
+  `MachineID` INT NOT NULL,
+  `TimeStamp` DATETIME NOT NULL,
+  `Activity` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`))
+;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
