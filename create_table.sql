@@ -623,8 +623,8 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Machines` (
 -- -----------------------------------------------------
 -- Table `AMA3D`.`Log`
 -- -----------------------------------------------------
-DROP TABLE IF EXISTS `AMA3D`.`Log` ;
-CREATE TABLE IF NOT EXISTS `AMA3D`.`Log` (
+DROP TABLE IF EXISTS `AMA3D`.`LogActivity` ;
+CREATE TABLE IF NOT EXISTS `AMA3D`.`LogActivity` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `AgentID` INT NOT NULL,
   `MachineID` INT NOT NULL,
