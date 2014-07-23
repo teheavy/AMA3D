@@ -347,7 +347,7 @@ def load_methods(idTR):
 def record_log_activity(activity, machineID, notify):
         """
         (str, int, boolea~) -> ()
-        Write activity summary of the agent to a 'LogTable' that is stored in the Database.
+        Write activity summary of the agent to table 'LogActivity' in database AMA3D.
         This feature was added to handle the concurrency situation in which multiple agents 
         are writing to the log table at a time.
         
@@ -364,29 +364,23 @@ def record_log_activity(activity, machineID, notify):
                 cursor = DB.cursor()
                 time = datetime.datetime.now()
 
-                # Insert and update Log in the database which has 4 attributes:
-                # AgentId      MachineId    TimeStamp    Activity
-                # -------      ---------    --------     --------
-                # -------      ---------    --------     --------
+                # Insert and update LogActivity in the database which has 5 attributes:
+                # id    AgentID      MachineID    TimeStamp    Activity
+                # --    -------      ---------    --------     --------
+                # --    -------      ---------    --------     --------
 
-                #cursor.execute("""INSERT INTO Log(AgentID, MachineID, TimeStamp, Activity) \
-                #         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity))
-
-                sql = """INSERT INTO Log(AgentID, MachineID, TimeStamp, Activity) \
-                         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity)
-
-                print sql
-
-                cursor.execute(sql)
+                cursor.execute("""INSERT INTO LogActivity(AgentID, MachineID, TimeStamp, Activity) \
+                         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity))
 
                 DB.commit()
-                return True
+
                 if notify == True:
-                        notify_admin(activity + "\nAgent ID: " + AGENT_ID + "\nMachine ID: " + machineID + "\nAMA3D Time: " + time)
+                        notify_admin(activity + "\nAgent ID: " + str(G.AGENT_ID) + "\nMachine ID: " + str(machineID) + "\nAMA3D Time: " + str(time))
+
+                return True
 
         except Exception as err:
-                #notify_admin("record_log_activity: " + str(err))
-                print str(err)
+                notify_admin("record_log_activity: " + str(err))
                 return False
 
 
