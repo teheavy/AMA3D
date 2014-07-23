@@ -345,43 +345,49 @@ def load_methods(idTR):
 
 
 def record_log_activity(activity, machineID, notify):
-	"""
-	(str, int, boolea~) -> ()
-	Write activity summary of the agent to a 'LogTable' that is stored in the Database.
-	This feature was added to handle the concurrency situation in which multiple agents 
-	are writing to the log table at a time.
-	
-	Keyword arguments:
-	str activity: contains the activity description to be added to log file. 
-	              It could be an error message as well.
-	              Error format: <function name: possible causes of failure.> 
-	int agentID: the unique agent identifier
-	"""
-	
+        """
+        (str, int, boolea~) -> ()
+        Write activity summary of the agent to a 'LogTable' that is stored in the Database.
+        This feature was added to handle the concurrency situation in which multiple agents 
+        are writing to the log table at a time.
+        
+        Keyword arguments:
+        str activity: contains the activity description to be added to log file. 
+                      It could be an error message as well.
+                      Error format: <function name: possible causes of failure.> 
+        int agentID: the unique agent identifier
+        """
 
-	try:
-		DB = G.DB
-		cur = DB.cursor()
-		timestamp = time.asctime()
-		AGENT_ID = G.AGENT_ID
 
-		# Insert and update LogTable in the database which has 4 attributes:
-		# AgentId      MachineId    TimeStamp    Activity
-		# -------      ---------    --------     --------
-		# -------      ---------    --------     --------
+        try:
+                DB = G.DB
+                cursor = DB.cursor()
+                time = datetime.datetime.now()
 
-		sql = """INSERT INTO LogTable(AgentId, MachineID, TimeStamp, Activity) \
-		         VALUES ( %s, %s, %s, %s)"""  % (AGENT_ID, str(machineID), timestamp, str(activity))
+                # Insert and update Log in the database which has 4 attributes:
+                # AgentId      MachineId    TimeStamp    Activity
+                # -------      ---------    --------     --------
+                # -------      ---------    --------     --------
 
-		cur.execute(sql)
-		DB.commit()
-		return True
-		if notify == True:
-			notify_admin(activity + "\nAgent ID: " + AGENT_ID + "\nMachine ID: " + machineID + "\nAMA3D Time: " + timestamp)
-			
-	except Exception as err:
-		notify_admin(str(err))
-		return False
+                #cursor.execute("""INSERT INTO Log(AgentID, MachineID, TimeStamp, Activity) \
+                #         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity))
+
+                sql = """INSERT INTO Log(AgentID, MachineID, TimeStamp, Activity) \
+                         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity)
+
+                print sql
+
+                cursor.execute(sql)
+
+                DB.commit()
+                return True
+                if notify == True:
+                        notify_admin(activity + "\nAgent ID: " + AGENT_ID + "\nMachine ID: " + machineID + "\nAMA3D Time: " + time)
+
+        except Exception as err:
+                #notify_admin("record_log_activity: " + str(err))
+                print str(err)
+                return False
 
 
 #agent terminates itself
