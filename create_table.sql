@@ -598,7 +598,7 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Agent` (
   --`idParent` INT NOT NULL, //Figure out why we need idParent
   `RegisterTime` DATETIME NOT NULL,
   `StartTime` DATETIME DEFAULT 0,
-  `Status` INT NOT NULL,
+  `Status` INT DEFAULT 0, -- 0 = free, 1 = busy
   `NumTaskDone` INT NOT NULL,
   `Priority` INT NOT NULL,
   PRIMARY KEY (`id`))
