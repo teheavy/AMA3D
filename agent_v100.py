@@ -71,7 +71,7 @@ def notify_admin(m):
         with open(ADMINFILE, "r") as csvfile:
             reader = csv.reader(csvfile, delimiter="\t")
             for line in reader:
-                msg = MIMEText("Dear " + line[0] + ",\n" + m  + "\n" + "All the best, \nAMA3D Happy Agent")
+                msg = MIMEText("Dear " + line[0] + ",\n" + m  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + G.AGENT_ID + " )")
                 msg['Subject'] = "AMA3D - Error"
                 msg['From'] = MYEMAIL
                 msg['To'] = line[1]
@@ -385,31 +385,38 @@ def record_log_activity(activity, machineID, notify):
 
 
 #agent terminates itself
-def terminate_self():
-	'''
-	() -> boolean
-	Check if current agent has finish its job.
-	If finished, delete the agent from status table and return true, otherwise return false.
-	'''
-	try:
-		AGENT_ID = G.AGENT_ID
-		DB = G.DB
-		cursor = DB.cursor()
-		sql1 = "SELECT Status FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
-		cursor.execute(sql1)
-		status = cursors.fetchall()[0]
+def terminate_self(wait):
+        '''
+        (boolean) -> ()
+        Input: whether to wait for agent to finish its task or not.
+        If wait == true, check if current agent has finish its job.
+                if finished, delete the agent from status table and exit the program.
+        If wait == false, force quit the program. 
+        '''
+        try:
+                DB = G.DB
+                cursor = DB.cursor()
+                if wait == True:
+                        status = [1]
+                        while status is not None and status[0] == 1:
+                                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                                # If Status = 0
+                                # the agent is not processing any task
+                                # terminate it
+                                # else, wait
+                                status = cursor.fetchone()
+                                time.sleep(2)
 
-		if status == 0:
-			sql2 = "DELETE FROM Agent WHERE AGENT_ID = %d"  %  AGENT_ID
-			cursor.execute(sql2)
-			return true
-		DB.commit()
-		DB.close()
-	except Exception as err:
-		DB.rollback()
-		DB.close()
-		record_log_activity(str(err)) #try this error msg 
-		return false 
+                cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                DB.commit()
+                DB.close()
+                exit(1)
+        except Exception as err:
+                DB.rollback()
+                DB.close()
+                record_log_activity("terminate_self: " + str(err), G.MACHINE_ID, True) #try this error msg 
+                exit(1)
+                # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
 
 
 def register():
@@ -427,7 +434,7 @@ def register():
         registerTime = datetime.datetime.now()
 
         try:
-                cursor.execute("""INSERT INTO AgentTest \
+                cursor.execute("""INSERT INTO Agent \
                 (RegisterTime, Status, NumTaskDone, Priority) \
                 VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
                 AGENT_ID = G.AGENT_ID
