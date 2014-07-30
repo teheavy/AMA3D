@@ -291,28 +291,30 @@ def update_machine():
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
 def find_resources():
-	"""
-	() -> (int)
-	Return the machineID of the "best" machine, -1 if no machine is free or 4444 if db failure.
-	"""
-	#In version 1.0.0, best machine = the machine with the biggest FreeMem
-	update_machine()
-	
-	DB = G.DB
-	cursor = DB.cursor()
-	
-	idBest = -1
-	
-	try:
-		result = cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""").fetchall()
-		if result[0]["FreeMem"] != 0:
-			idBest = result[0]["idMachine"]
-		return idBest
-		
-	except:
-		record_log_activity("find_resources: db failure.", G.DB.MACHINE_ID, True)
-		return 4444
-	
+        """
+        () -> (int)
+        Return the machineID of the "best" machine, -1 if no machine is free or 4444 if db failure.
+        """
+        #In version 1.0.0, best machine = the machine with the biggest FreeMem
+        update_machine()
+
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
+
+        idBest = -1
+
+        try:
+                cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""")
+                result = cursor.fetchall()
+
+                if result[0]["FreeMem"] != 0:
+                        idBest = result[0]["idMachine"]
+
+                return idBest
+
+        except Exception as err:
+                record_log_activity("find_resources: db failure. " + str(err), G.MACHINE_ID, True)
+                return 4444
 	
 #dynamically load the task-specific codes
 def load_methods(idTR):
