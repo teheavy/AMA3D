@@ -227,7 +227,7 @@ def spawn(machineID):
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
         try:
-                cursor.execute("""SELECT * FROM Machines WHERE idMachine = %d""" % G.MACHINE_ID)
+                cursor.execute("""SELECT * FROM Machines WHERE idMachine = %d""" % machineID)
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
