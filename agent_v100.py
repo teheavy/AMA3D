@@ -218,31 +218,32 @@ def calculate_priority(idTC):
 #spawn another agent: 
 #create an agent by using this agent as template	
 def spawn(machineID):
-	"""
-	(int) -> (int)
-	Spawn a new agent on the machine represented by the given machineID.
-	"""
-	
-	DB = G.DB
-	cursor = DB.cursor()
-	
-	try:
-		machine_info = cursor.execute("""SELECT * FROM Machines WHERE idMachine == %d""" % G.MACHINE_ID).fetchall()[0]
+        """
+        (int) -> (int)
+        Spawn a new agent on the machine represented by the given machineID.
+        """
 
-		port = machine_info['Port']
-		agent_path = machine_info['Path'] + "/agent.py" #software folder
-		host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
-		# Find a way to connect remote computer using password
-		if port == "":
-			status = subprocess.call(['ssh', host_addr, 'python', agent_path], shell=True)
-		else:
-			status = subprocess.call(['ssh', '-p', port, host_addr, 'python', agent_path], shell=True)
+        try:
+                cursor.execute("""SELECT * FROM Machines WHERE idMachine = %d""" % G.MACHINE_ID)
+                machine_info = cursor.fetchall()[0]
 
-		return status
-	except:
-		record_log_activity("spawn: db failure or unsuccessful remote subprocess call.", G.DB.MACHINE_ID, True)
-		return 4444	
+                port = machine_info['Port']
+                agent_path = machine_info['Path'] + "/agent.py" #software folder
+                host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
+
+                # Find a way to connect remote computer using password
+                if port == "":
+                        status = subprocess.call(['ssh', str(host_addr), 'python', str(agent_path)])
+                else:
+                        status = subprocess.call(['ssh', '-p', str(port), str(host_addr), 'python', str(agent_path)])
+
+                return status
+        except Exception as err:
+                record_log_activity("spawn: db failure or unsuccessful remote subprocess call. " + str(err), G.MACHINE_ID, True)
+                return 4444
 		
 #update machine availabilities
 #helper function for find_resources
