@@ -349,7 +349,7 @@ def load_methods(idTR):
 		return status
 	
 	except: 
-		record_log_activity("load_methods: db failure or unsuccessful subprocess call.", G.DB.MACHINE_ID, True)
+		record_log_activity("load_methods: db failure or unsuccessful subprocess call.", G.MACHINE_ID, True)
 		return 4444
 
 
