@@ -247,39 +247,46 @@ def spawn(machineID):
 #update machine availabilities
 #helper function for find_resources
 def update_machine():
-	"""
-	() -> (int)
-	For every machine in the Machine table, update the machine information. \
-	Return 0 upon success, 1 otherwise.
-	"""
-	
-	DB = G.DB
-	cursor = DB.cursor()
-	
-	try:
-		machine_info = cursor.execute("""SELECT * FROM Machines""").fetchall()
+        """
+        () -> (int)
+        For every machine in the Machine table, update the machine information. \
+        Return 0 upon success, 1 otherwise.
+        """
 
-		
-		
-		for i in range(0, len(machine_info)):
-			#ssh into the machine
-			port = machine_info[i]['Port']
-			agent_path = machine_info[i]['Path'] + "/agent.py" #software folder
-			host_addr = machine_info[i]['User'] + "@" + machine_info[i]['Host'] #user@host
-	
-			#find FreeMem 
-			if port == "":
-				output = subprocess.check_output(['ssh', host_addr, 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'], shell=True)
-			else:
-				output = subprocess.check_output(['ssh', '-p', port, host_addr, 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'], shell=True)
-			
-			
-			cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[i]['idMachine'])))
-			DB.commit()
-		return 0
-	except:
-		record_log_activity("update_machine: db failure or unsuccessful remote subprocess call.", G.DB.MACHINE_ID, True)
-		return 4444
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
+
+        try:
+                cursor.execute("""SELECT * FROM Machines""")
+                machine_info = cursor.fetchall()
+
+
+                for i in range(0, len(machine_info)):
+                        #ssh into the machine
+                        port = machine_info[i]["Port"]
+                        #agent_path = machine_info[i]['Path'] + "/agent.py" #software folder
+                        host_addr = machine_info[i]["User"] + "@" + machine_info[i]["Host"] #user@host
+
+                        #find FreeMem   
+                        if port == "":
+                                output = subprocess.check_output(['ssh', str(host_addr), 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'])
+                        else:
+                                output = subprocess.check_output(['ssh', '-p', str(port), str(host_addr), 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'])
+                        pport = "-p %s " % port
+
+                        #do NOT use shell=True... but why???! (We spent a decade debugging this!!!!! Grrrrrrrrrr.... Hate)
+
+                        cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[i]['idMachine'])))
+                DB.commit()
+                        #can restructure codes and factor out duplications
+                        #can also add in codes to update info about machine's CPU.... or not
+
+                return 0
+        except Exception as err:
+                record_log_activity("update_machine: db failure or unsuccessful remote subprocess call." + str(err), G.MACHINE_ID, True)
+                print str(err)
+                return 4444
+
 
 #return a list of available machines by their machineID 
 #in order of non-increasing availablity (most free first)
