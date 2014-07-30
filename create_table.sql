@@ -610,13 +610,13 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Agent` (
 DROP TABLE IF EXISTS `AMA3D`.`Machines` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Machines` (
-  `idMachine` BIGINT UNSIGNED NOT NULL,
+  `idMachine` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `User` VARCHAR(45) NOT NULL,
   `Path` VARCHAR(100) NULL,
   `Host` VARCHAR(45) NOT NULL,
-  `Port` INT NOT NULL,
-  `CPU` INT NOT NULL,
-  `FreeMem` INT NOT NULL,
+  `Port` INT Default NULL,
+  `CPU` INT Default NULL,
+  `FreeMem` INT Default NULL,
   PRIMARY KEY (`idMachine`))
 ;
 
