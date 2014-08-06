@@ -319,38 +319,40 @@ def find_resources():
 	
 #dynamically load the task-specific codes
 def load_methods(idTR):
-	""" 
-	(int) -> (int)
-	Dynamically load a module that its file path is known.
+        """ 
+        (int) -> (int)
+        Dynamically load a module that its file path is known.
     
-	Keyword arguments:
-	idTR -- id number of TaskResource table
-	"""
-	DB = G.DB		
-	cursor = DB.cursor()
+        Keyword arguments:
+        idTR -- id number of TaskResource table
+        """
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
-	try:
-   		# retrieve basepath where AMA3D is installed
-   		base_path = cursor.execute("""SELECT Path FROM Machines WHERE\
-		idMachine == %d""" % G.MACHINE_ID).fetchall()[0][0]
-		
-   		#retrive the relative path and the program in which the module has been written
-   		stuff = cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
-		idTaskResource == %d""" % idTR).fetchall()
-		
-		rel_path = stuff[0]["Codepath"]
-		program = stuff[0]["Program"]
-		
-		code_path = base_path + "/" + rel_path
-		
-		# execute the program
-		status = subprocess.call([program, code_path, G.PARAM], shell=True)
-		
-		return status
-	
-	except: 
-		record_log_activity("load_methods: db failure or unsuccessful subprocess call.", G.MACHINE_ID, True)
-		return 4444
+        try:
+                # retrieve basepath where AMA3D is installed
+                cursor.execute("""SELECT Path FROM Machines WHERE\
+                idMachine = %d""" % G.MACHINE_ID)
+                base_path = cursor.fetchall()[0]["Path"]
+
+                #retrive the relative path and the program in which the module has been written
+                cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
+                id = %d""" % idTR)
+                stuff = cursor.fetchall()
+
+                rel_path = stuff[0]["Codepath"]
+                program = stuff[0]["Program"]
+
+                code_path = base_path + "/" + rel_path
+
+                # execute the program
+                status = subprocess.call([program, code_path, G.PARAM])
+
+                return status
+
+        except Exception as err:
+                record_log_activity("load_methods: db failure or unsuccessful subprocess call. " + str(err), G.MACHINE_ID, True)
+                return 4444
 
 
 
