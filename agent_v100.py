@@ -84,127 +84,111 @@ def notify_admin(m):
 
 
 def decide_next(seconds, threshold):
-	"""
-	(int, int) -> ()
-	Decide what to do next (brain of the agent).
-	
-	Keyword arguments:
-	time -- how long, in seconds, the agent will sleep when there is nothing to do
-	threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
-	"""
-	
-	count = 0
-	
-	while not die():
-		
-		AGENT_ID = G.AGENT_ID
-		DB = G.DB
-		cursor = DB.cursor()
-		
+        """
+        (int, int) -> ()
+        Decide what to do next (brain of the agent).
+        
+        Keyword arguments:
+        time -- how long, in seconds, the agent will sleep when there is nothing to do
+        threshold -- an integer defining "busy" (spawn if and only if the number of TC is greater than this integer)
+        """
+
+        count = 0
+
+        while not die():
+
+                AGENT_ID = G.AGENT_ID
+                DB = G.DB
+                cursor = DB.cursor()
+
 		try:
-			
-			#check for number of TC
-			cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status = open""")
-			results = cursor.fetchall
-		except Exception as err:
-			notify_admin(str(err))
-			terminate_self()
-			
-		if results[0][0] == 0: #no open TC => idle
-			count += 1
-			if count > 5 and not isOnly(): 
-				#if idling more than five times and this is not the last agent: terminate
-				terminate_self(False)
+
+                        #check for number of TC
+                        cursor.execute("""SELECT count(*) FROM TriggeringCondition WHERE Status ='open'""")
+                        results = cursor.fetchall()
+
+		        if results[0][0] == 0: #no open TC => idle
+		                count += 1
+		                if count > 5 and not isOnly():
+		                        #if idling more than five times and this is not the last agent: terminate
+		                        terminate_self(False)
+		                else:
+		                        time.sleep(seconds)
+		        else:
+		                if results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
+
+		                        machineID = find_resources()
+
+		                        while machineID == -1: #while no machine available
+		                                time.sleep(3)
+		                                spawn(machineID)
+
+                                	#if spawn fails, notify admin (done by spawn) and continue the work.
+
+
+			#pick the first open task 
+			#Future implementation: can make agent smarter by choosing a task by type
+			cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
+                                                FROM TriggeringCondition WHERE Status ='open'""")
+  			results = cursor.fetchall()
+               
+                        idTC = results[0][0]
+                        idTaskResource = results[0][1]
+                        IsLast = results[0][3]
+
+                        #globally stores parameters for to be used by load_methods
+                        #so that the agent can spawn more agents with preloaded methods
+                        #and just update PARAM
+                        PARAM = G.PARAM
+                        PARAM = results[0][2]
+
+
+			#update TriggeringCondition table
+			cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
+                                                VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
+			#update Agent table
+			cursor.execute("""UPDATE Agent SET \
+                                                StartTime = %s \
+                                                Status = 'busy' \
+                                                Priority = %d \
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
+
+			#load and execute methods
+			status = load_methods(idTaskResource)
+
+			#update priority
+			cursor.execute("""UPDATE Agent SET \
+                                                Priority = %d \
+                                                WHERE id = %d"""  %  (calculate_priority(idTC), AGENT_ID))
+
+			if status == 0:
+				# successfully completed the task
+				# remove TC and write to log file
+				# addition of new TC will be taken care of by program executed
+				cursor.execute("""DELETE FROM TriggeringCondition \
+                                                WHERE id = %d"""  %  (idTC))
+				record_log_activity("Task %d sucessfully completed." %idTC, G.MACHINE_ID, False)
+
+
 			else:
-				time.sleep(seconds)
-		else:
-			if results[0][0] > threshold: #number of open TC greater than threshold => spawn one agent
-				
-				machineID = find_resources()
-				
-				while machineID == -1: #while no machine available
-					time.sleep(3)
-					spawn(machineID)
-				
-				#if spawn fails, notify admin (done by spawn) and continue the work.
-					
-			#0 < number of TC < threshold => work (note: impossible to have negative number of TC)
-		
-			try:
-				#pick the first open task 
-				#Future implementation: can make agent smarter by choosing a task by type
-				cursor.execute("""SELECT (id, idTaskResource, Parameters, IsLast) \
-						FROM TriggeringCondition WHERE Status = open""")
-				results = cursor.fetchall
-			except Exception as err:
-				notify_admin(str(err))
-				terminate_self()
+				# fail
+				# reset TC 
+				cursor.execute("""UPDATE TriggeringCondition SET \
+                                                Status = 'open' \
+                                                WHERE id = %d"""  %  (idTC))
+                                                record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
+				# if task failed, reset TC to open and log the errors
+				# limit the number of times to attempt the TC?
 			
-			idTC = results[0][0]
-			idTaskResource = results[0][1]
-			IsLast = results[0][3]
+			DB.commit()
+		except Exception as err:
+			DB.rollback()
+			record_log_activity("decide_next: failure. " + str(err), G.MACHINE_ID, True)
+			terminate_self()
 
-			#globally stores parameters for to be used by load_methods
-			#so that the agent can spawn more agents with preloaded methods
-			#and just update PARAM
-			PARAM = G.PARAM
-			PARAM = results[0][2]
-			
-			try: 
-				#update TriggeringCondition table
-				cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
-						VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
-				#update Agent table
-				cursor.execute("""UPDATE Agent SET \
-						StartTime = %s \
-						Status = 'busy' \
-						Priority = %d \
-						WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
-				DB.commit()
-			except Exception as err:
-				DB.rollback()
-				notify_admin(str(err))
-				terminate_self()
-			
-			try:
-				#load and execute methods
-				status = load_methods(idTaskResource)
-				
-				#update priority
-				cursor.execute("""UPDATE Agent SET \
-						Priority = %d \
-						WHERE id = %d"""  %  (101, AGENT_ID))
-				DB.commit()
-			except Exception as err:
-				DB.rollback()
-				notify_admin(str(err))
-				terminate_self()
-			
-			try:
-				if status == 0:
-					# successfully completed the task
-					# remove TC and write to log file
-					# addition of new TC will be taken care of by program executed
-					cursor.execute("""DELETE FROM TriggeringCondition \
-						WHERE id = %d"""  %  (idTC))
-				
-				else:
-					# fail
-					# reset TC 
-						cursor.execute("""UPDATE TriggeringCondition SET \
-						Status = 'open' \
-						WHERE id = %d"""  %  (idTC))
-						record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID)
-					# if task failed, reset TC to open and log the errors
-					# limit the number of times to attempt the TC?
-				DB.commit()
-			except Exception as err:
-				DB.rollback()
-				notify_admin(str(err))
-				terminate_self()
+        #if a die signal is present: self terminate
+        terminate_self()
 
-	#if a die signal is present: self terminate
-	terminate_self()
 
 def calculate_priority(idTC):
 	"""
