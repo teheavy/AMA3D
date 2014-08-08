@@ -28,3 +28,45 @@ COMPONENTS OF THE WORKFLOW IMPLEMENTED AS FUNCTIONS.
 .
 .
 .
+TEMPLATE:---------------------------------------------------------------
+
+AMA3D
+========
+
+$project will solve your problem of where to start with documentation,
+by providing a basic explanation of how to do it easily.
+
+Look how easy it is to use:
+
+    import AMA3D
+    # Get your stuff done
+    project.do_stuff()
+
+Features
+--------
+.
+.
+.
+Installation
+------------
+
+Install $project by running:
+
+    install project
+
+Contribute
+----------
+
+- Issue Tracker: https://github.com/teheavy/AMA3D/issues
+- Source Code: https://github.com/teheavy/AMA3D
+
+Support
+-------
+
+If you are having issues, please let us know.
+We have a mailing list located at: project@google-groups.com
+
+License
+-------
+
+The project is licensed under the GNU GENERAL PUBLIC LICENSE
