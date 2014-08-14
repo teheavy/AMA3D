@@ -558,11 +558,11 @@ DROP TABLE IF EXISTS `AMA3D`.`TriggeringCondition` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`TriggeringCondition` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `Parameters` VARCHAR(45) NULL,
+  `Parameters` VARCHAR(45) NULL, -- This is for load method
   `idTaskResource` INT NOT NULL,
   `idAgent` INT NOT NULL,
   `IsLast` TINYINT(1) NOT NULL,
-  `Status` VARCHAR(45) NOT NULL,
+  `Status` VARCHAR(45) NOT NULL, -- Might need to consider to change to int
   PRIMARY KEY (`id`))
 ;
 
