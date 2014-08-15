@@ -363,6 +363,10 @@ def record_log_activity(activity, machineID, notify):
                 # --    -------      ---------    --------     --------
                 # --    -------      ---------    --------     --------
 
+                # replace single quotes that breaks our query
+                # note: might want take care of other metacharacters to prevent SQL injections          
+                activity = re.sub('\'', '\"',activity)
+
                 cursor.execute("""INSERT INTO LogActivity(AgentID, MachineID, TimeStamp, Activity) \
                          VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity))
 
@@ -440,16 +444,18 @@ def register():
                 #print "register error"
                 return False
 
-#die
+
 def die():
-	"""
-	()->()
-	Listen for die signal and return true iff die signal is present.
-	
-	:param: none
-	
-	"""
-	G.DIE = True
+        """
+        ()->(boolean)
+        Listen for die signal and return true iff die signal is present.
+        :param: none
+        """
+        #if 
+        #return True
+        #else
+        return False
+
 
 
 #acting as the main function
