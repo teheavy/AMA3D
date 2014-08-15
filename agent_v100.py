@@ -95,7 +95,7 @@ def decide_next(seconds, threshold):
 
         count = 0
 
-	while not die():
+        while not die():
 
                 AGENT_ID = G.AGENT_ID
                 DB = G.DB
@@ -125,7 +125,8 @@ def decide_next(seconds, threshold):
 
                                         while machineID == -1: #while no machine available
                                                 time.sleep(3)
-                                                spawn(machineID)
+                                                s = spawn(machineID)
+                                                print "spawn status: " + str(s)
                                                 print "Trying to spawn agent at: machine " + str(machineID)
 
                                         #if spawn fails, notify admin (done by spawn) and continue the work.
@@ -140,11 +141,15 @@ def decide_next(seconds, threshold):
                         idTC = results['id']
                         idTaskResource = results['idTaskResource']
                         IsLast = results['IsLast']
+                        print "idTC: " + str(idTC)
+                        print "idTaskResource: " + str(idTaskResource)
+                        print "IsLast: " + str(IsLast)
 
                         #globally stores parameters for to be used by load_methods
                         #so that the agent can spawn more agents with preloaded methods
                         #and just update PARAM
                         G.PARAM = results['Parameters']
+                        print str(G.PARAM)
 
                         #update TriggeringCondition table
                         cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
