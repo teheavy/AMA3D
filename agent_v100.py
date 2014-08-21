@@ -152,14 +152,17 @@ def decide_next(seconds, threshold):
                         print str(G.PARAM)
 
                         #update TriggeringCondition table
-                        cursor.execute("""INSERT INTO TriggeringCondition(idAgent, Status) \
-                                                VALUES (%d, 'in_progress') WHERE id = %d"""  %  (AGENT_ID, idTC))
+                        cursor.execute("""UPDATE TriggeringCondition SET \
+                                                idAgent = %d, \
+                                                Status = 'in_progress' \
+                                                WHERE id = %d"""  %  (int(AGENT_ID), idTC))
+
                         #update Agent table
                         cursor.execute("""UPDATE Agent SET \
                                                 StartTime = %s \
                                                 Status = 'busy' \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), AGENT_ID))
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(AGENT_ID)))
 
                         #load and execute methods
                         status = load_methods(idTaskResource)
@@ -167,7 +170,7 @@ def decide_next(seconds, threshold):
                         #update priority
                         cursor.execute("""UPDATE Agent SET \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (calculate_priority(idTC), AGENT_ID))
+                                                WHERE id = %d"""  %  (calculate_priority(idTC), int(AGENT_ID)))
 
                         if status == 0:
                                 # successfully completed the task
