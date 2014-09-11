@@ -562,7 +562,7 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`TriggeringCondition` (
   `idTaskResource` INT NOT NULL,
   `idAgent` INT NOT NULL,
   `IsLast` TINYINT(1) NOT NULL,
-  `Status` VARCHAR(45) NOT NULL, -- Might need to consider to change to int
+  `Status` INT NOT NULL, -- 0 - open 1, -- in_progress
   PRIMARY KEY (`id`))
 ;
 
