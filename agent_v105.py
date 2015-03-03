@@ -75,7 +75,7 @@ def notify_admin(m):
                 msg['To'] = line[1]
 
                 print msg.as_string()
-                
+
                 # sending message through localhost
                 # s = smtplib.SMTP('localhost')
                 # s.sendmail(MYEMAIL, line[1], msg.as_string())
@@ -251,7 +251,7 @@ def spawn(machineID):
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent_v100.py" #software folder
+                agent_path = machine_info['Path'] + "/agent_v105.py" #software folder
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
                 print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 # Find a way to connect remote computer using password
@@ -353,9 +353,9 @@ def load_methods(idTR):
         try:
                 
                 # retrieve basepath where AMA3D is installed
-                # cursor.execute("""SELECT Path FROM Machines WHERE\
-                # idMachine = %d""" % G.MACHINE_ID)
-                # base_path = cursor.fetchall()[0]["Path"]
+                cursor.execute("""SELECT Path FROM Machines WHERE\
+                idMachine = %d""" % G.MACHINE_ID)
+                base_path = cursor.fetchall()[0]["Path"]
 
                 #retrive the relative path and the program in which the module has been written
                 cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
@@ -365,8 +365,8 @@ def load_methods(idTR):
                 rel_path = stuff[0]["Codepath"]
                 program = stuff[0]["Program"]
 
-                # code_path = base_path + "/" + rel_path
-                code_path = rel_path
+                code_path = base_path + "/" + rel_path
+                # code_path = rel_path
                 print code_path
                 # execute the program
                 status = subprocess.call([program, code_path, G.PARAM])
@@ -512,6 +512,7 @@ def essehozaibashsei():
 	# May change these to global variables
 	TIME = 5
 	THRESHOLD = 4
+ 
 	# Parse File
 	file = open("Account", "r")
 	parsed = file.readline().split()
@@ -527,7 +528,10 @@ def essehozaibashsei():
 # files on machines (a AMA3D directory with agent.py... etc)
 
 if __name__ == '__main__':
+    path = "~/AMA3D"
+    os.chdir(os.path.expanduser(path)) 
     print os.getcwd()
+    
     t = threading.Thread(target=essehozaibashsei)
     t.start()
     t.join()
