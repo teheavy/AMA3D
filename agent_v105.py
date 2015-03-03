@@ -1,13 +1,9 @@
-#TODO
-	# Setup a email account for agent.
-
-
-#Version 1.0.0
+#Version 1.0.5
 # agent.py's assumption/ preconditions	
 # db set up. Including tables with the following info:
 	# a list of available machines (uername + passwords + host + abs path 
 	# of where the AMA3D folder is saved)
-#Spawn linearly: After spawning, the parent agent picks up a task. 
+# Spawn linearly: After spawning, the parent agent picks up a task. 
 
 
 #!/usr/bin/python
@@ -79,10 +75,11 @@ def notify_admin(m):
                 msg['To'] = line[1]
 
                 print msg.as_string()
+                
                 # sending message through localhost
-                s = smtplib.SMTP('localhost')
-                s.sendmail(MYEMAIL, line[1], msg.as_string())
-                s.quit()
+                # s = smtplib.SMTP('localhost')
+                # s.sendmail(MYEMAIL, line[1], msg.as_string())
+                # s.quit()
 
 def decide_next(seconds, threshold):
         """
@@ -123,12 +120,13 @@ def decide_next(seconds, threshold):
                                 if numTC > threshold: #number of open TC greater than threshold => spawn one agent
                                         print "There are: " + str(numTC) + " triggering conditions."
                                         print "Busy threshold is: " + str(threshold)
-                                        machineID = find_resources()
+                                        machineID = -1#find_resources()
                                         print "MachineID is: " + str(machineID)
 
-                                        while machineID == -1: #while no machine available
+                                        while machineID == -1 and not die(): #while no machine available
                                                 time.sleep(3)
-                                                s = spawn(machineID)
+                                                #s = spawn(machineID)
+                                                s = spawn(1)
                                                 print "spawn status: " + str(s)
                                                 print "Trying to spawn agent at: machine " + str(machineID)
 
@@ -190,7 +188,7 @@ def decide_next(seconds, threshold):
                                                 Status = 2 \
                                                 WHERE id = %d"""  %  (idTC))
 
-                                        record_log_activity("Executing method failed: %d, error number: %d." % (idTC, status), G.MACHINE_ID, True)
+                                        record_log_activity("Executing method failed: Task %d, error number: %d." % (idTC, status), G.MACHINE_ID, True)
                                         # if task failed, reset TC to open and log the errors
                                         # limit the number of times to attempt the TC?
 
@@ -253,11 +251,11 @@ def spawn(machineID):
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent.py" #software folder
+                agent_path = machine_info['Path'] + "/agent_v100.py" #software folder
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
-
+                print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 # Find a way to connect remote computer using password
-                if port == "":
+                if not port:
                         status = subprocess.call(['ssh', str(host_addr), 'python', str(agent_path)])
                 else:
                         status = subprocess.call(['ssh', '-p', str(port), str(host_addr), 'python', str(agent_path)])
@@ -291,7 +289,7 @@ def update_machine():
                         host_addr = machine_info[i]["User"] + "@" + machine_info[i]["Host"] #user@host
 
                         #find FreeMem   
-                        if port == "":
+                        if not port:
                                 output = subprocess.check_output(['ssh', str(host_addr), 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'])
                         else:
                                 output = subprocess.check_output(['ssh', '-p', str(port), str(host_addr), 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'])
@@ -353,10 +351,11 @@ def load_methods(idTR):
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
         try:
+                
                 # retrieve basepath where AMA3D is installed
-                cursor.execute("""SELECT Path FROM Machines WHERE\
-                idMachine = %d""" % G.MACHINE_ID)
-                base_path = cursor.fetchall()[0]["Path"]
+                # cursor.execute("""SELECT Path FROM Machines WHERE\
+                # idMachine = %d""" % G.MACHINE_ID)
+                # base_path = cursor.fetchall()[0]["Path"]
 
                 #retrive the relative path and the program in which the module has been written
                 cursor.execute("""SELECT Codepath, Program FROM TaskResource WHERE\
@@ -366,8 +365,9 @@ def load_methods(idTR):
                 rel_path = stuff[0]["Codepath"]
                 program = stuff[0]["Program"]
 
-                code_path = base_path + "/" + rel_path
-		print code_path
+                # code_path = base_path + "/" + rel_path
+                code_path = rel_path
+                print code_path
                 # execute the program
                 status = subprocess.call([program, code_path, G.PARAM])
 
@@ -406,7 +406,7 @@ def record_log_activity(activity, machineID, notify):
 
                 # replace single quotes that breaks our query
                 # note: might want take care of other metacharacters to prevent SQL injections          
-                activity = re.sub('\'', '\"',activity)
+                activity = re.sub('\'', '\"', activity)
 
                 cursor.execute("""INSERT INTO LogActivity(AgentID, MachineID, TimeStamp, Activity) \
                          VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, machineID, time, activity))
@@ -458,8 +458,8 @@ def terminate_self(wait):
                 # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
 
 
-def register():
-        """() -> boolean
+def register(username):
+        """(str) -> boolean
         Register agent information to the database. Update global variable AGENT_ID
         from database. Return the completion status.
 
@@ -477,29 +477,36 @@ def register():
                 (RegisterTime, Status, NumTaskDone, Priority) \
                 VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
                 G.AGENT_ID = DB.insert_id()
+
+                # Update the machine info in agent file
+                cursor.execute("""SELECT idMachine FROM Machines WHERE\
+                User = '%s'""" % username)
+                G.MACHINE_ID = cursor.fetchall()[0][0]
+                print "I'm on machine #" + str(G.MACHINE_ID)
+
                 DB.commit() #might not need this?
                 print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
                 return True
         except Exception as err:
-				notify_admin(str(err))
+				notify_admin("register: " + str(err))
                 #print "register error"
 				return False
 
-
+# Change the DIE file in directory to send die singal.
 def die():
         """
         ()->(boolean)
         Listen for die signal and return true iff die signal is present.
         :param: none
         """
-        file = open("DIE", "r")
+        file = open("DIE", "rw")
         file.readline()
         DIE = file.readline()
         return DIE == "T"
 
 
 
-#acting as the main function
+# Acting as the main function
 def essehozaibashsei():
 
 	# May change these to global variables
@@ -510,7 +517,7 @@ def essehozaibashsei():
 	parsed = file.readline().split()
 	if connect_db(parsed[0], parsed[1], parsed[2])==0: 
 
-		register()
+		register(parsed[0])
 		#check DIE here instead of in decide_next?
 		#while !DIE
 		decide_next(TIME, THRESHOLD)
@@ -520,8 +527,7 @@ def essehozaibashsei():
 # files on machines (a AMA3D directory with agent.py... etc)
 
 if __name__ == '__main__':
-    
+    print os.getcwd()
     t = threading.Thread(target=essehozaibashsei)
-    #t.setDaemon(True)
     t.start()
     t.join()
