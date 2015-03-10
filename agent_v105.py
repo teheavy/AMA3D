@@ -207,7 +207,7 @@ def decide_next(seconds, threshold):
                         print str(err)
                         record_log_activity("decide_next: failure. " + str(err), G.MACHINE_ID, True)
                         terminate_self(False)
-        print "Goodnight, I love this world!"
+        print "Goodnight, my boss!"
         terminate_self(False)
 
 
@@ -252,6 +252,7 @@ def spawn(machineID):
 
                 port = machine_info['Port']
                 agent_path = machine_info['Path'] + "/agent_v105.py" #software folder
+                print agent_path
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
                 print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 # Find a way to connect remote computer using password
