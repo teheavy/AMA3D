@@ -135,7 +135,6 @@ def decide_next(seconds, threshold):
                                                     bestMachine = find_resources()
                                                     time.sleep(10)
                                                     mins += 1
-
                                             
                                             s = spawn(bestMachine)
                                             print "spawn status: " + str(s)
