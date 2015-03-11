@@ -20,6 +20,8 @@ from email.mime.text import MIMEText
 import re
 import AMA_globals as G # importing global variables
 import threading
+import sys
+import traceback
 
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
@@ -45,41 +47,47 @@ def connect_db(user, password, dbname):
                 print "Fail to connect to database"
                 record_log_activity(str(err))
                 notify_admin(str(err))
-
+                print traceback.format_exc()
                 # Rollback in case there is any error
                 DB.rollback()
                 return 1
 
 
-def notify_admin(m):
+def register(username):
+        """(str) -> boolean
+        Register agent information to the database. Update global variable AGENT_ID
+        from database. Return the completion status.
+
+        : param: none
+        : effects: global AGENT_ID is set to autoincremented AGENT table id
+        : returns: True for successful database insert, False otherwise.
         """
-        (str) -> ()
-        Send an email including the message string to the admin(s).
-        
-        Keyword arguments:
-        msg -- the message to be sent
-        """
+        DB = G.DB
+        cursor = DB.cursor()
 
-        ADMINFILE = G.ADMINFILE
-        MYEMAIL = G.MYEMAIL
+        registerTime = datetime.datetime.now()
 
-        # assume admin info are stored in a file in the following format
-        # Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
+        try:
+                cursor.execute("""INSERT INTO Agent \
+                (RegisterTime, Status, NumTaskDone, Priority) \
+                VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
+                G.AGENT_ID = DB.insert_id()
 
-        with open(ADMINFILE, "r") as csvfile:
-            reader = csv.reader(csvfile, delimiter="\t")
-            for line in reader:
-                msg = MIMEText("Dear " + line[0] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
-                msg['Subject'] = "AMA3D - Error"
-                msg['From'] = MYEMAIL
-                msg['To'] = line[1]
+                # Update the machine info in agent file
+                cursor.execute("""SELECT idMachine FROM Machines WHERE\
+                User = '%s'""" % username)
+                G.MACHINE_ID = cursor.fetchall()[0][0]
+                print "I'm on machine #" + str(G.MACHINE_ID)
 
-                print msg.as_string()
+                DB.commit() #might not need this?
+                print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
+                return True
+        except Exception as err:
+                print traceback.format_exc()
+                notify_admin("register: " + str(err))
+                #print "register error"
+                return False
 
-                # sending message through localhost
-                # s = smtplib.SMTP('localhost')
-                # s.sendmail(MYEMAIL, line[1], msg.as_string())
-                # s.quit()
 
 def decide_next(seconds, threshold):
         """
@@ -108,30 +116,32 @@ def decide_next(seconds, threshold):
 
                         if numTC == 0: #no open TC => idle
                                 count += 1
-                                if count > 5 and isOnly() > 1:
+                                if count > 5 and find_alive_agents() > 1:
                                         print "count greater than 5, killing agent."
                                         #if idling more than five times and this is not the last agent: terminate
                                         terminate_self(False)
                                 else:
                                         time.sleep(seconds)
-                                        print "number of agents alive in the system: " + str(isOnly())
+                                        print "number of agents alive in the system: " + str(find_alive_agents())
                                         print "trying again in " + str(seconds) + " seconds."
                         else:
                                 if numTC > threshold: #number of open TC greater than threshold => spawn one agent
                                         print "There are: " + str(numTC) + " triggering conditions."
                                         print "Busy threshold is: " + str(threshold)
-                                        machineID = -1#find_resources()
-                                        print "MachineID is: " + str(machineID)
+                                        for i in range(numTC - threshold):
+                                            bestMachine = find_resources()
+                                            mins = 0
+                                            while bestMachine == -1 and mins < 5 and not die():
+                                                    bestMachine = find_resources()
+                                                    time.sleep(10)
+                                                    mins += 1
 
-                                        while machineID == -1 and not die(): #while no machine available
-                                                time.sleep(3)
-                                                #s = spawn(machineID)
-                                                s = spawn(1)
-                                                print "spawn status: " + str(s)
-                                                print "Trying to spawn agent at: machine " + str(machineID)
-
-                                        #if spawn fails, notify admin (done by spawn) and continue the work.
-
+                                            
+                                            s = spawn(bestMachine)
+                                            print "spawn status: " + str(s)
+                                            print "Trying to spawn agent at: machine " + str(bestMachine)
+                                            record_log_activity("Agent %d is spawning an agent at %d, spawn status: %d" %(G.AGENT_ID, machineID, s), G.MACHINE_ID, False)
+                                            #if spawn fails, notify admin (done by spawn) and continue the work.
 
                                 #pick the first open task 
                                 #Future implementation: can make agent smarter by choosing a task by type
@@ -201,17 +211,22 @@ def decide_next(seconds, threshold):
                                                 WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(AGENT_ID)))
 
                                 DB.commit()
+
+                                #Reset waiting times
+                                count = 0
 				
                 except Exception as err:
                         DB.rollback()
                         print str(err)
+                        print traceback.format_exc()
                         record_log_activity("decide_next: failure. " + str(err), G.MACHINE_ID, True)
                         terminate_self(False)
         print "Goodnight, my boss!"
         terminate_self(False)
 
 
-def isOnly():
+#Helper function for decide_next()
+def find_alive_agents():
         """
         ()->(int)
         Returns the number of agents left in the system.
@@ -223,9 +238,10 @@ def isOnly():
                 return cursor.fetchall()[0][0]
         except Exception as err:
                 # print str(err)
-                record_log_activity("isOnly: failed" + str(err), G.MACHINE_ID, True)
+                record_log_activity("find_alive_agents: failed" + str(err), G.MACHINE_ID, True)
 
 
+#Helper function for decide_next()
 def calculate_priority(idTC):
 	"""
 	(int) -> (int)
@@ -235,39 +251,38 @@ def calculate_priority(idTC):
 	#dummy function
 	return 0
 
-#spawn another agent: 
-#create an agent by using this agent as template	
-def spawn(machineID):
+
+#return a list of available machines by their machineID 
+#in order of non-increasing availability (most free first)
+def find_resources():
         """
-        (int) -> (int)
-        Spawn a new agent on the machine represented by the given machineID.
+        () -> (int)
+        Return the machineID of the "best" machine, -1 if no machine is free or 4444 if db failure.
         """
+        #In version 1.0.0, best machine = the machine with the biggest FreeMem
+        update_machine()
 
         DB = G.DB
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
+        idBest = -1
+
         try:
-                cursor.execute("""SELECT * FROM Machines WHERE idMachine = %d""" % machineID)
-                machine_info = cursor.fetchall()[0]
+                cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""")
+                result = cursor.fetchall()
 
-                port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent_v105.py" #software folder
-                print agent_path
-                host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
-                print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-                # Find a way to connect remote computer using password
-                if not port:
-                        status = subprocess.call(['ssh', str(host_addr), 'python', str(agent_path)])
-                else:
-                        status = subprocess.call(['ssh', '-p', str(port), str(host_addr), 'python', str(agent_path)])
+                if result[0]["FreeMem"] != 0:
+                        idBest = result[0]["idMachine"]
 
-                return status
+                return idBest
+
         except Exception as err:
-                record_log_activity("spawn: db failure or unsuccessful remote subprocess call. " + str(err), G.MACHINE_ID, True)
+                record_log_activity("find_resources: db failure. " + str(err), G.MACHINE_ID, True)
                 return 4444
-		
+
+
 #update machine availabilities
-#helper function for find_resources
+#helper function for find_resources()
 def update_machine():
         """
         () -> (int)
@@ -304,41 +319,47 @@ def update_machine():
                         #can also add in codes to update info about machine's CPU.... or not
 
                 return 0
-				
+                
         except Exception as err:
                 record_log_activity("update_machine: db failure or unsuccessful remote subprocess call." + str(err), G.MACHINE_ID, True)
                 print str(err)
                 return 4444
 
 
-#return a list of available machines by their machineID 
-#in order of non-increasing availability (most free first)
-def find_resources():
+
+#spawn another agent: 
+#create an agent by using this agent as template	
+def spawn(machineID):
         """
-        () -> (int)
-        Return the machineID of the "best" machine, -1 if no machine is free or 4444 if db failure.
+        (int) -> (int)
+        Spawn a new agent on the machine represented by the given machineID.
         """
-        #In version 1.0.0, best machine = the machine with the biggest FreeMem
-        update_machine()
 
         DB = G.DB
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
-        idBest = -1
-
         try:
-                cursor.execute("""SELECT idMachine, FreeMem FROM Machines ORDER BY FreeMem DESC""")
-                result = cursor.fetchall()
+                cursor.execute("""SELECT * FROM Machines WHERE idMachine = %d""" % machineID)
+                machine_info = cursor.fetchall()[0]
 
-                if result[0]["FreeMem"] != 0:
-                        idBest = result[0]["idMachine"]
+                port = machine_info['Port']
+                agent_path = machine_info['Path'] + "/agent_v105.py" #software folder
+                print agent_path
+                host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
+                print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                # Find a way to connect remote computer using password
+                if not port:
+                        status = subprocess.call(['ssh', str(host_addr), 'python', str(agent_path)])
+                else:
+                        status = subprocess.call(['ssh', '-p', str(port), str(host_addr), 'python', str(agent_path)])
 
-                return idBest
-
+                return status
         except Exception as err:
-                record_log_activity("find_resources: db failure. " + str(err), G.MACHINE_ID, True)
+                print traceback.format_exc()
+                record_log_activity("spawn: db failure or unsuccessful remote subprocess call. " + str(err), G.MACHINE_ID, True)
                 return 4444
-	
+		
+
 #dynamically load the task-specific codes
 def load_methods(idTR):
         """ 
@@ -375,9 +396,45 @@ def load_methods(idTR):
                 return status
 
         except Exception as err:
+                print traceback.format_exc()
                 record_log_activity("load_methods: db failure or unsuccessful subprocess call. " + str(err), G.MACHINE_ID, True)
                 return 4444
 
+
+#agent terminates itself
+def terminate_self(wait):
+        '''
+        (boolean) -> ()
+        Input: whether to wait for agent to finish its task or not.
+        If wait == true, check if current agent has finish its job.
+                if finished, delete the agent from status table and exit the program.
+        If wait == false, force quit the program. 
+        '''
+        try:
+                DB = G.DB
+                cursor = DB.cursor()
+                if wait == True:
+                        status = [1]
+                        while status is not None and status[0] == 1:
+                                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                                # If Status = 0
+                                # the agent is not processing any task
+                                # terminate it
+                                # else, wait
+                                status = cursor.fetchone()
+                                time.sleep(2)
+                print "\nHappy Agent " + str(G.AGENT_ID) + " is not here now\n"
+                cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                DB.commit()
+                DB.close()
+                exit(1)
+        except Exception as err:
+                DB.rollback()
+                DB.close()
+                print traceback.format_exc()
+                record_log_activity("terminate_self: " + str(err), G.MACHINE_ID, True) #try this error msg 
+                exit(1)
+                # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
 
 
 def record_log_activity(activity, machineID, notify):
@@ -424,74 +481,36 @@ def record_log_activity(activity, machineID, notify):
                 return False
 
 
-#agent terminates itself
-def terminate_self(wait):
-        '''
-        (boolean) -> ()
-        Input: whether to wait for agent to finish its task or not.
-        If wait == true, check if current agent has finish its job.
-                if finished, delete the agent from status table and exit the program.
-        If wait == false, force quit the program. 
-        '''
-        try:
-                DB = G.DB
-                cursor = DB.cursor()
-                if wait == True:
-                        status = [1]
-                        while status is not None and status[0] == 1:
-                                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
-                                # If Status = 0
-                                # the agent is not processing any task
-                                # terminate it
-                                # else, wait
-                                status = cursor.fetchone()
-                                time.sleep(2)
-                print "\nHappy Agent " + str(G.AGENT_ID) + " is not here now\n"
-                cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
-                DB.commit()
-                DB.close()
-                exit(1)
-        except Exception as err:
-                DB.rollback()
-                DB.close()
-                record_log_activity("terminate_self: " + str(err), G.MACHINE_ID, True) #try this error msg 
-                exit(1)
-                # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
-
-
-def register(username):
-        """(str) -> boolean
-        Register agent information to the database. Update global variable AGENT_ID
-        from database. Return the completion status.
-
-        : param: none
-        : effects: global AGENT_ID is set to autoincremented AGENT table id
-        : returns: True for successful database insert, False otherwise.
+def notify_admin(m):
         """
-        DB = G.DB
-        cursor = DB.cursor()
+        (str) -> ()
+        Send an email including the message string to the admin(s).
+        
+        Keyword arguments:
+        msg -- the message to be sent
+        """
 
-        registerTime = datetime.datetime.now()
+        ADMINFILE = G.ADMINFILE
+        MYEMAIL = G.MYEMAIL
 
-        try:
-                cursor.execute("""INSERT INTO Agent \
-                (RegisterTime, Status, NumTaskDone, Priority) \
-                VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
-                G.AGENT_ID = DB.insert_id()
+        # assume admin info are stored in a file in the following format
+        # Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
 
-                # Update the machine info in agent file
-                cursor.execute("""SELECT idMachine FROM Machines WHERE\
-                User = '%s'""" % username)
-                G.MACHINE_ID = cursor.fetchall()[0][0]
-                print "I'm on machine #" + str(G.MACHINE_ID)
+        with open(ADMINFILE, "r") as csvfile:
+            reader = csv.reader(csvfile, delimiter="\t")
+            for line in reader:
+                msg = MIMEText("Dear " + line[0] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+                msg['Subject'] = "AMA3D - Error"
+                msg['From'] = MYEMAIL
+                msg['To'] = line[1]
 
-                DB.commit() #might not need this?
-                print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
-                return True
-        except Exception as err:
-				notify_admin("register: " + str(err))
-                #print "register error"
-				return False
+                print msg.as_string()
+
+                # sending message through localhost
+                # s = smtplib.SMTP('localhost')
+                # s.sendmail(MYEMAIL, line[1], msg.as_string())
+                # s.quit()
+
 
 # Change the DIE file in directory to send die singal.
 def die():
