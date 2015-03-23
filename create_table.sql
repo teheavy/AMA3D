@@ -632,6 +632,18 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`LogActivity` (
   PRIMARY KEY (`id`))
 ;
 
+-- -----------------------------------------------------
+-- Table `AMA3D`.`User`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `AMA3D`.`User` ;
+CREATE TABLE IF NOT EXISTS `AMA3D`.`User` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `UserID` INT NOT NULL,
+  `Email` VARCHAR(255) NOT NULL,
+  `Comment` VARCHAR(255),
+  PRIMARY KEY (`id`))
+;
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
