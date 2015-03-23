@@ -71,16 +71,16 @@ def register(username):
 
         try:
 
-                # Update the machine info in agent file
-                cursor.execute("""SELECT idMachine, User FROM Machines WHERE\
-                User = '%s'""" % username)
-                G.MACHINE_ID, user = cursor.fetchall()[0][0], cursor.fetchall()[0][1]
-                print "I'm on machine #" + str(G.MACHINE_ID)
-
                 cursor.execute("""INSERT INTO Agent \
                 (Machine, RegisterTime, Status, NumTaskDone, Priority) \
-                VALUES ('%s', '%s', 1, 0, 0)""" % (user, registerTime) #registertime and starttime are set by default
+                VALUES ('%s', '%s', 0, 0, 0)""" % (username, registerTime)) #registertime and starttime are set by default
                 G.AGENT_ID = DB.insert_id()
+
+                # Update the machine info in agent file
+                cursor.execute("""SELECT idMachine FROM Machines WHERE\
+                User = '%s'""" % username)
+                G.MACHINE_ID = cursor.fetchall()[0][0]
+                print "I'm on machine #" + str(G.MACHINE_ID)
 
                 DB.commit() #might not need this?
                 print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
@@ -116,11 +116,11 @@ def decide_next(seconds, threshold):
                         cursor.execute("""SELECT count(*) as numTC FROM TriggeringCondition WHERE Status = 0""")
                         numTC = cursor.fetchall()[0]['numTC']
 
-                        cursor.execute("""SELECT count(*) as numAG FROM Agent WHERE Status = 0""")
-                        numFreeAG = cursor.fetchall()[0]['numAG']
+                        cursor.execute("""SELECT count(*) as numFreeAG FROM Agent WHERE Status = 0""")
+                        numFreeAG = cursor.fetchall()[0]['numFreeAG']
 
-                        cursor.execute("""SELECT count(*) FROM Agent""")
-                        numAG = cursor.fetchall()[0][0]
+                        cursor.execute("""SELECT count(*) as numAG FROM Agent""")
+                        numAG = cursor.fetchall()[0]['numAG']
 
                         if numTC == 0: #no open TC => idle
                                 count += 1
@@ -173,14 +173,14 @@ def decide_next(seconds, threshold):
                                 cursor.execute("""UPDATE TriggeringCondition SET \
                                                 idAgent = %d, \
                                                 Status = 1 \
-                                                WHERE id = %d"""  %  (int(AGENT_ID), idTC))
+                                                WHERE id = %d"""  %  (int(G.AGENT_ID), idTC))
 
                                 #update Agent table
                                 cursor.execute("""UPDATE Agent SET \
                                                 StartTime = '%s', \
                                                 Status = 1, \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(AGENT_ID)))
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(G.AGENT_ID)))
 
                                 #load and execute methods
                                 status = load_methods(idTaskResource)
@@ -192,9 +192,10 @@ def decide_next(seconds, threshold):
                                         cursor.execute("""DELETE FROM TriggeringCondition \
                                                 WHERE id = %d"""  %  (idTC))
 
-                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % AGENT_ID)
-                                        NumTaskDone = cursor.fetchall()[0][0] + 1
-                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, AGENT_ID))
+                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % int(G.AGENT_ID))
+
+                                        NumTaskDone = cursor.fetchall()[0]["NumTaskDone"] + 1
+                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, int(G.AGENT_ID)))
 
                                         record_log_activity("Task %d sucessfully completed." %idTC, G.MACHINE_ID, False)
                                 else:
@@ -214,7 +215,7 @@ def decide_next(seconds, threshold):
                                                 StartTime = '%s', \
                                                 Status = 0, \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(AGENT_ID)))
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(G.AGENT_ID)))
 
                                 DB.commit()
 
@@ -225,10 +226,10 @@ def decide_next(seconds, threshold):
                         DB.rollback()
                         print str(err)
                         print traceback.format_exc()
-                        record_log_activity("decide_next: failure. " + str(err), G.MACHINE_ID, True)
-                        terminate_self(False)
-        print "Received Die Signal\nGoodnight, my boss!"
+                        record_log_activity("decide_next: failure. " +  str(err), G.MACHINE_ID, True)
+
         terminate_self(False)
+        print "Received Die Signal\nGoodnight, my boss!"
 
 
 #Helper function for decide_next()
@@ -400,6 +401,7 @@ def terminate_self(wait):
         If wait == false, force quit the program. 
         '''
         try:
+            if G.AGENT_ID != "":
                 DB = G.DB
                 cursor = DB.cursor()
                 if wait == True:
@@ -416,7 +418,7 @@ def terminate_self(wait):
                 cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
                 DB.commit()
                 DB.close()
-                exit(1)
+            exit(1)
         except Exception as err:
                 DB.rollback()
                 DB.close()
@@ -479,26 +481,30 @@ def notify_admin(m):
         msg -- the message to be sent
         """
 
-        # assume admin info are stored in a file in the following format
-        # Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
-        DB = G.DB
-        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
-
         try:
-            cursor.execute("""SELECT * FROM User""")
+            DB = G.DB
+            cursor = DB.cursor()
+            cursor.execute("""SELECT Username, Email FROM User""")
             user_info = cursor.fetchall()
-
 
             for i in xrange(len(user_info)):
             
-                msg = MIMEText("Dear " + str(user_info[i]['Username']) + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+                msg = MIMEText("Dear " + user_info[i][0] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
                 msg['Subject'] = "AMA3D - Error"
                 msg['From'] = G.MYEMAIL
-                msg['To'] = str(user_info[i]['Email'])
+                msg['To'] = user_info[i][1]
+
+                print msg.as_string()
+
+                # sending message through localhost
+                # s = smtplib.SMTP('localhost')
+                # s.sendmail(MYEMAIL, line[1], msg.as_string())
+                # s.quit()
 
         except Exception as err:
                 print traceback.format_exc()
-                record_log_activity("notify_admin: " + str(err), G.MACHINE_ID, False) #try this error msg 
+                # This could 
+                # record_log_activity("notify_admin: " + str(err), G.MACHINE_ID, False) #try this error msg 
                 exit(1)
 
 
