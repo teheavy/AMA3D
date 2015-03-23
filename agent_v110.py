@@ -501,12 +501,12 @@ def notify_admin(m):
             user_info = cursor.fetchall()
 
 
-            for i in xrange(len(machine_info)):
+            for i in xrange(len(user_info)):
             
-                msg = MIMEText("Dear " + machine_info[i]['Username'] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+                msg = MIMEText("Dear " + user_info[i]['Username'] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
                 msg['Subject'] = "AMA3D - Error"
                 msg['From'] = G.MYEMAIL
-                msg['To'] = machine_info[i]['Email']
+                msg['To'] = user_info[i]['Email']
 
         except Exception as err:
                 print traceback.format_exc()
