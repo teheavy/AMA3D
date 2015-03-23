@@ -24,6 +24,7 @@ import sys
 import traceback
 import multiprocessing
 
+
 #connect to database with connectinfo
 def connect_db(user, password, dbname):
         """
@@ -223,7 +224,7 @@ def decide_next(seconds, threshold):
                         print traceback.format_exc()
                         record_log_activity("decide_next: failure. " + str(err), G.MACHINE_ID, True)
                         terminate_self(False)
-        print "Goodnight, my boss!"
+        print "Received Die Signal\nGoodnight, my boss!"
         terminate_self(False)
 
 
@@ -313,8 +314,6 @@ def update_machine():
                                 output = subprocess.check_output(['ssh', '-p', str(port), str(host_addr), 'cat /proc/meminfo | grep "MemFree:" | sed \'s/\s\+/\*/g\' | cut -d "*" -f 2'])
                         pport = "-p %s " % port
 
-                        #do NOT use shell=True... but why???! (We spent a decade debugging this!!!!! Grrrrrrrrrr.... Hate)
-
                         cursor.execute("""UPDATE Machines SET FreeMem = %d WHERE idMachine = %d""" % (int(output), int(machine_info[i]['idMachine'])))
                 DB.commit()
                         #can restructure codes and factor out duplications
@@ -391,7 +390,7 @@ def load_methods(idTR):
 
                 code_path = base_path + "/" + rel_path
                 # code_path = rel_path
-                print code_path
+                print "Loading task: " + code_path
                 # execute the program
                 status = subprocess.call([program, code_path, G.PARAM])
 
@@ -439,7 +438,7 @@ def terminate_self(wait):
                 # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
 
 
-def record_log_activity(activity, machineID, notify):
+def record_log_activity(activity, machineID, notify=True):
         """
         (str, int, boolea~) -> ()
         Write activity summary of the agent to table 'LogActivity' in database AMA3D.
@@ -492,26 +491,27 @@ def notify_admin(m):
         msg -- the message to be sent
         """
 
-        ADMINFILE = G.ADMINFILE
-        MYEMAIL = G.MYEMAIL
-
         # assume admin info are stored in a file in the following format
         # Admin Name\tAdmin Email\tAdmin Cell \tOther Info\n
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
-        with open(ADMINFILE, "r") as csvfile:
-            reader = csv.reader(csvfile, delimiter="\t")
-            for line in reader:
-                msg = MIMEText("Dear " + line[0] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+        try:
+            cursor.execute("""SELECT * FROM User""")
+            user_info = cursor.fetchall()
+
+
+            for i in xrange(len(machine_info)):
+            
+                msg = MIMEText("Dear " + machine_info[i]['Username'] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
                 msg['Subject'] = "AMA3D - Error"
-                msg['From'] = MYEMAIL
-                msg['To'] = line[1]
+                msg['From'] = G.MYEMAIL
+                msg['To'] = machine_info[i]['Email']
 
-                print msg.as_string()
-
-                # sending message through localhost
-                # s = smtplib.SMTP('localhost')
-                # s.sendmail(MYEMAIL, line[1], msg.as_string())
-                # s.quit()
+        except Exception as err:
+                print traceback.format_exc()
+                record_log_activity("notify_admin: " + str(err), G.MACHINE_ID, False) #try this error msg 
+                exit(1)
 
 
 # Change the DIE file in directory to send die singal.
