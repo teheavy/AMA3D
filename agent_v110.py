@@ -70,16 +70,17 @@ def register(username):
         registerTime = datetime.datetime.now()
 
         try:
-                cursor.execute("""INSERT INTO Agent \
-                (RegisterTime, Status, NumTaskDone, Priority) \
-                VALUES ('%s', 1, 0, 0)""" % registerTime) #registertime and starttime are set by default
-                G.AGENT_ID = DB.insert_id()
 
                 # Update the machine info in agent file
-                cursor.execute("""SELECT idMachine FROM Machines WHERE\
+                cursor.execute("""SELECT idMachine, User FROM Machines WHERE\
                 User = '%s'""" % username)
-                G.MACHINE_ID = cursor.fetchall()[0][0]
+                G.MACHINE_ID, user = cursor.fetchall()[0][0], cursor.fetchall()[0][1]
                 print "I'm on machine #" + str(G.MACHINE_ID)
+
+                cursor.execute("""INSERT INTO Agent \
+                (Machine, RegisterTime, Status, NumTaskDone, Priority) \
+                VALUES ('%s', '%s', 1, 0, 0)""" % (user, registerTime) #registertime and starttime are set by default
+                G.AGENT_ID = DB.insert_id()
 
                 DB.commit() #might not need this?
                 print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
@@ -116,20 +117,23 @@ def decide_next(seconds, threshold):
                         numTC = cursor.fetchall()[0]['numTC']
 
                         cursor.execute("""SELECT count(*) as numAG FROM Agent WHERE Status = 0""")
-                        numAG = cursor.fetchall()[0]['numAG']
+                        numFreeAG = cursor.fetchall()[0]['numAG']
+
+                        cursor.execute("""SELECT count(*) FROM Agent""")
+                        numAG = cursor.fetchall()[0][0]
 
                         if numTC == 0: #no open TC => idle
                                 count += 1
-                                if count > 5 and find_alive_agents() > 1:
+                                if count > 5 and numAG > 1:
                                         print "count greater than 5, killing agent."
                                         #if idling more than five times and this is not the last agent: terminate
                                         terminate_self(False)
                                 else:
                                         time.sleep(seconds)
-                                        print "number of agents alive in the system: " + str(find_alive_agents())
+                                        print "number of agents alive in the system: " + str(numAG)
                                         print "trying again in " + str(seconds) + " seconds."
                         else:
-                                if numTC > threshold and numTC > numAG: #number of open TC greater than threshold => spawn one agent
+                                if numTC > threshold and numTC > numFreeAG: #number of open TC greater than threshold => spawn one agent
                                         print "There are: " + str(numTC) + " triggering conditions."
                                         print "Busy threshold is: " + str(threshold)
                                         bestMachine = find_resources()
@@ -181,17 +185,16 @@ def decide_next(seconds, threshold):
                                 #load and execute methods
                                 status = load_methods(idTaskResource)
 
-                                #update priority
-                                cursor.execute("""UPDATE Agent SET \
-                                                Priority = %d \
-                                                WHERE id = %d"""  %  (calculate_priority(idTC), int(AGENT_ID)))
-
                                 if status == 0:
                                         # successfully completed the task
                                         # remove TC and write to log file
                                         # addition of new TC will be taken care of by program executed
                                         cursor.execute("""DELETE FROM TriggeringCondition \
                                                 WHERE id = %d"""  %  (idTC))
+
+                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % AGENT_ID)
+                                        NumTaskDone = cursor.fetchall()[0][0] + 1
+                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, AGENT_ID))
 
                                         record_log_activity("Task %d sucessfully completed." %idTC, G.MACHINE_ID, False)
                                 else:
@@ -226,22 +229,6 @@ def decide_next(seconds, threshold):
                         terminate_self(False)
         print "Received Die Signal\nGoodnight, my boss!"
         terminate_self(False)
-
-
-#Helper function for decide_next()
-def find_alive_agents():
-        """
-        ()->(int)
-        Returns the number of agents left in the system.
-        """
-        try:
-                DB = G.DB
-                cursor = DB.cursor()
-                cursor.execute("""SELECT count(*) FROM Agent""")
-                return cursor.fetchall()[0][0]
-        except Exception as err:
-                # print str(err)
-                record_log_activity("find_alive_agents: failed" + str(err), G.MACHINE_ID, True)
 
 
 #Helper function for decide_next()
@@ -398,6 +385,7 @@ def load_methods(idTR):
 
         except Exception as err:
                 print traceback.format_exc()
+                cursor.execute("""UPDATE Agent SET Status = 2 WHERE id = %d"""  %  int(AGENT_ID))
                 record_log_activity("load_methods: db failure or unsuccessful subprocess call. " + str(err), G.MACHINE_ID, True)
                 return 4444
 
@@ -503,10 +491,10 @@ def notify_admin(m):
 
             for i in xrange(len(user_info)):
             
-                msg = MIMEText("Dear " + user_info[i]['Username'] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+                msg = MIMEText("Dear " + str(user_info[i]['Username']) + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
                 msg['Subject'] = "AMA3D - Error"
                 msg['From'] = G.MYEMAIL
-                msg['To'] = user_info[i]['Email']
+                msg['To'] = str(user_info[i]['Email'])
 
         except Exception as err:
                 print traceback.format_exc()
