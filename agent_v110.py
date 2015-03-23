@@ -345,10 +345,10 @@ def spawn(machineID):
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent_v105.py" #software folder
-                print agent_path
+                agent_path = machine_info['Path'] + "/agent_v110.py" #software folder
+
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
-                print "HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
                 # Find a way to connect remote computer using password
                 if not port:
                         status = subprocess.Popen(['ssh', str(host_addr), 'python', str(agent_path)], shell=False)
