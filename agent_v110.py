@@ -70,17 +70,16 @@ def register(username):
         registerTime = datetime.datetime.now()
 
         try:
-
-                cursor.execute("""INSERT INTO Agent \
-                (Machine, RegisterTime, Status, NumTaskDone, Priority) \
-                VALUES ('%s', '%s', 0, 0, 0)""" % (username, registerTime)) #registertime and starttime are set by default
-                G.AGENT_ID = DB.insert_id()
-
                 # Update the machine info in agent file
                 cursor.execute("""SELECT idMachine FROM Machines WHERE\
                 User = '%s'""" % username)
                 G.MACHINE_ID = cursor.fetchall()[0][0]
                 print "I'm on machine #" + str(G.MACHINE_ID)
+
+                cursor.execute("""INSERT INTO Agent \
+                (Machine, RegisterTime, Status, NumTaskDone, Priority) \
+                VALUES ('%s', '%s', 0, 0, 0)""" % (username, registerTime)) #registertime and starttime are set by default
+                G.AGENT_ID = DB.insert_id()
 
                 DB.commit() #might not need this?
                 print "Happy Agent " + str(G.AGENT_ID) + " is here now!\n"
@@ -228,8 +227,9 @@ def decide_next(seconds, threshold):
                         print traceback.format_exc()
                         record_log_activity("decide_next: failure. " +  str(err), G.MACHINE_ID, True)
 
-        terminate_self(False)
         print "Received Die Signal\nGoodnight, my boss!"
+        terminate_self(False)
+        
 
 
 #Helper function for decide_next()
@@ -525,23 +525,17 @@ def die():
 # Acting as the main function
 def essehozaibashsei():
 
-	# May change these to global variables
-	TIME = 5
-	THRESHOLD = 4
- 
-	# Parse File
-	file = open("Account", "r")
-	parsed = file.readline().split()
-	if connect_db(parsed[0], parsed[1], parsed[2])==0: 
+    # May change these to global variables
+    TIME = 5
+    THRESHOLD = 4
 
-		register(parsed[0])
-		#check DIE here instead of in decide_next?
-		#while !DIE
-		decide_next(TIME, THRESHOLD)
-	# Setup the email account, ask user for Adminfile location.
-	# Add code for listen for die signal from user
+    # Parse File
+    file = open("Account", "r")
+    parsed = file.readline().split()
+    if connect_db(parsed[0], parsed[1], parsed[2])==0: 
+        register(os.popen("echo $USER").read().split("\n")[0])
+        decide_next(TIME, THRESHOLD)
 
-# files on machines (a AMA3D directory with agent.py... etc)
 
 if __name__ == '__main__':
     path = "~/AMA3D"
