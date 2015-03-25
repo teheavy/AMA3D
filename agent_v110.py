@@ -392,7 +392,7 @@ def load_methods(idTR):
 
 
 #agent terminates itself
-def terminate_self(wait):
+def terminate_self():
         '''
         (boolean) -> ()
         Input: whether to wait for agent to finish its task or not.
@@ -404,18 +404,20 @@ def terminate_self(wait):
             if G.AGENT_ID != "":
                 DB = G.DB
                 cursor = DB.cursor()
-                if wait == True:
-                        status = [1]
-                        while status is not None and status[0] == 1:
-                                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
-                                # If Status = 0
-                                # the agent is not processing any task
-                                # terminate it
-                                # else, wait
-                                status = cursor.fetchone()
-                                time.sleep(2)
-                print "\nHappy Agent " + str(G.AGENT_ID) + " is not here now\n"
+
+                status = [1]
+                count = 0
+                while status is not None and status[0] == 1 and count < 60:
+                        cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                        # If Status = 0
+                        # the agent is not processing any task
+                        # terminate it
+                        # else, wait
+                        status = cursor.fetchone()
+                        time.sleep(5)
+                        count += 1
                 cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                print "\nHappy Agent " + str(G.AGENT_ID) + " is not here now\n"
                 DB.commit()
                 DB.close()
             exit(1)
@@ -425,8 +427,7 @@ def terminate_self(wait):
                 print traceback.format_exc()
                 record_log_activity("terminate_self: " + str(err), G.MACHINE_ID, True) #try this error msg 
                 exit(1)
-                # just kill the agent.... Admin might have to manually fix the db. Too bad so sad~~~~ :(
-
+                
 
 def record_log_activity(activity, machineID, notify=True):
         """
