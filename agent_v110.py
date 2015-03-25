@@ -26,9 +26,9 @@ import multiprocessing
 
 
 #connect to database with connectinfo
-def connect_db(user, password, dbname):
+def connect_db(host, user, password, dbname):
         """
-        (str, int, str) -> int
+        (str, str, int, str) -> int
         Given user information, try to connect database.
         Return 0 when success, if the first connection is not successful, try connect 5 times, if failed, return 1 and notify user. 
         Input arguments:
@@ -37,13 +37,13 @@ def connect_db(user, password, dbname):
         dbname: the database we are going to log in
         """
         try:
-                G.DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
+                G.DB = MySQLdb.connect(host=host, user=user, passwd=password, db=dbname)
                 print "Database Connected!"
                 return 0
         except Exception, err:
                 mins = 0
                 while mins < 5:
-                        DB = MySQLdb.connect(host="142.150.40.189", user=user, passwd=password, db=dbname)
+                        DB = MySQLdb.connect(host=host, user=user, passwd=password, db=dbname)
                         time.sleep(60)
                         mins+=1
                 print "Fail to connect to database"
@@ -515,7 +515,7 @@ def die():
         Listen for die signal and return true iff die signal is present.
         :param: none
         """
-        file = open("DIE", "rw")
+        file = open("DIE", "r")
         file.readline()
         DIE = file.readline()
         return DIE == "T"
@@ -532,7 +532,7 @@ def essehozaibashsei():
     # Parse File
     file = open("Account", "r")
     parsed = file.readline().split()
-    if connect_db(parsed[0], parsed[1], parsed[2])==0: 
+    if connect_db(parsed[0], parsed[1], parsed[2], parsed[3])==0: 
         register(os.popen("echo $USER").read().split("\n")[0])
         decide_next(TIME, THRESHOLD)
 
