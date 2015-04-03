@@ -11,17 +11,14 @@ USE `AMA3D` ;
 DROP TABLE IF EXISTS `AMA3D`.`Topology` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Topology` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `Name` VARCHAR(45) NOT NULL,
-  `Source` VARCHAR(45) NULL,
+  `Node` VARCHAR(20) NOT NULL UNIQUE,
+  `Description` VARCHAR(45) NULL,
   `Comment` VARCHAR(255) NULL,
-  `Representative` INT NULL,
-  PRIMARY KEY (`id`),
-  INDEX `Representative_idx` (`Representative` ASC),
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
+  `Representative` CHAR(7) NULL,
+  PRIMARY KEY (`Node`),
   CONSTRAINT `Representative`
     FOREIGN KEY (`Representative`)
-    REFERENCES `AMA3D`.`Domain` (`id`)
+    REFERENCES `AMA3D`.`Domain` (`Name`)
     ON DELETE SET NULL
     ON UPDATE RESTRICT)
 ;
@@ -33,18 +30,14 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Topology` (
 DROP TABLE IF EXISTS `AMA3D`.`Domain` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Domain` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `Name` VARCHAR(20) NOT NULL,
+  `Name` CHAR(7) NOT NULL UNIQUE,
   `Comment` VARCHAR(255) NULL,
-  `Topology` BIGINT UNSIGNED NOT NULL,
+  `TopoNode` VARCHAR(20) NOT NULL,
   `PDB_ID` CHAR(4) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `idComplex_UNIQUE` (`id` ASC),
-  INDEX `Topology_idx` (`Topology` ASC),
-  CONSTRAINT `TopologyID`
-    FOREIGN KEY (`Topology`)
-    REFERENCES `AMA3D`.`Topology` (`id`)
-    ON DELETE SET NULL
+  PRIMARY KEY (`Name`),
+  CONSTRAINT `TopoNode`
+    FOREIGN KEY (`TopoNode`) 
+    REFERENCES `AMA3D`.`Topology` (`Node`)
     ON UPDATE RESTRICT)
 ;
 
