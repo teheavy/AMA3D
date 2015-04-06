@@ -1,0 +1,26 @@
+#---------------------------------------------------------------------
+# FILE NAME:    CathNames.v4.0.0
+# FILE DATE:    28.06.2013
+#
+# CATH VERSION: v4.0.0
+# VERSION DATE: 28.06.2013
+#
+# FILE FORMAT:  Cath Names File (CNF) Format 2.0
+#
+# FILE DESCRIPTION:
+# Description of each node in the CATH hierarchy for all class, architecture
+# and topology levels. CATH homologous superfamily names are also included
+# if they have been defined.
+#
+# See 'README.file_formats' for file format information
+#---------------------------------------------------------------------
+1    1xmkA00    :Mainly Alpha
+2    3pucA00    :Mainly Beta
+3    1c0pA01    :Alpha Beta
+4    1g6xA00    :Few Secondary Structures
+1.10    1xmkA00    :Orthogonal Bundle
+1.20    2p67A01    :Up-down Bundle
+4.10    1g6xA00    :Irregular
+1.10.8    1oaiA00    :Helicase, Ruva Protein; domain 3	
+1.10.10    1xmkA00    :Arc Repressor Mutant, subunit A
+1.10.10.1    1xmkA00    :Arc Repressor Mutant, subunit A

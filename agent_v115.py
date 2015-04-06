@@ -127,7 +127,7 @@ def decide_next(seconds, threshold):
                                 if count > 5 and numAG > 1:
                                         print "count greater than 5, killing agent."
                                         #if idling more than five times and this is not the last agent: terminate
-                                        terminate_self(False)
+                                        terminate_self()
                                 else:
                                         time.sleep(seconds)
                                         print "number of agents alive in the system: " + str(numAG)
@@ -229,7 +229,7 @@ def decide_next(seconds, threshold):
                         record_log_activity("decide_next: failure. " +  str(err), G.MACHINE_ID, True)
 
         print "Received Die Signal\nGoodnight, my boss!"
-        terminate_self(False)
+        terminate_self()
         
 
 
@@ -333,7 +333,7 @@ def spawn(machineID):
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent_v110.py" #software folder
+                agent_path = machine_info['Path'] + "/agent_v115.py" #software folder
 
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
 
@@ -381,24 +381,31 @@ def load_methods(idTR):
                 # code_path = rel_path
                 print "Loading task: " + code_path
                 # execute the program
-                proc = subprocess.Popen([program, code_path, G.PARAM], stdout=subprocess.PIPE)
-                for line in iter(p.stdout.readline,''):
+                proc = subprocess.Popen([program, code_path, G.PARAM], stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+                for line in iter(proc.stdout.readline,''):
                     out = line.rstrip()
+                    print "Output from %s: %s"%(rel_path, out)
+
                     if out.startswith("trigger"):
-                        inputs = out.split()
+                        inputs = out.split("\t")
                         try:
                             cursor.execute( "INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status)\
-                             VALUES (%s, %d, %d, 0)"%(inputs[1], inputs[2], inputs[3]))
+                             VALUES (\"%s\", %d, %d, 0)"%(inputs[1], int(inputs[2]), int(inputs[3])))
+                            time.sleep(5)
             
                         except Exception as err:
-                            record_log_activity("trigger: Unable to create a triggering condition.")
-                
-                proc.communicate()
+                            print traceback.format_exc()
+                            record_log_activity("trigger: Unable to create a triggering condition.", G.MACHINE_ID, True)
+
+                err = proc.communicate()[1]
+                if err != "":
+                    print "An Error Occurred: " + err 
+                print "\n"
                 return proc.returncode
 
         except Exception as err:
                 print traceback.format_exc()
-                cursor.execute("""UPDATE Agent SET Status = 2 WHERE id = %d"""  %  int(AGENT_ID))
+                cursor.execute("""UPDATE Agent SET Status = 2 WHERE id = %d"""  %  int(G.AGENT_ID))
                 record_log_activity("load_methods: db failure or unsuccessful subprocess call. " + str(err), G.MACHINE_ID, True)
                 return 4444
 
@@ -434,15 +441,12 @@ def terminate_self():
                 DB = G.DB
                 cursor = DB.cursor()
 
-                status = [1]
+                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                status = cursor.fetchone()[0]
                 count = 0
-                while status is not None and status[0] == 1 and count < 60:
+                while status == 1 and count < 60:
                         cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
-                        # If Status = 0
-                        # the agent is not processing any task
-                        # terminate it
-                        # else, wait
-                        status = cursor.fetchone()
+                        status = cursor.fetchone()[0]
                         time.sleep(5)
                         count += 1
                 cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
@@ -542,12 +546,15 @@ def notify_admin(m):
 def die():
         """
         ()->(boolean)
-        Listen for die signal and return true iff die signal is present.
+        Listen for die signal and return true iff die signal is present, and delete the die signal after use.
         :param: none
         """
-        file = open("DIE", "r")
-        file.readline()
-        DIE = file.readline()
+        with open('DIE', 'r+') as file:
+            text = file.readline()
+            DIE = file.readline()
+            file.seek(0)
+            file.write(text)
+            file.truncate()
         return DIE == "T"
 
 
@@ -560,8 +567,8 @@ def essehozaibashsei():
     THRESHOLD = 4
 
     # Parse File
-    file = open("Account", "r")
-    parsed = file.readline().split()
+    with open("Account", "r") as file:
+        parsed = file.readline().split()
     if connect_db(parsed[0], parsed[1], parsed[2], parsed[3])==0: 
         register(os.popen("echo $USER").read().split("\n")[0])
         decide_next(TIME, THRESHOLD)
