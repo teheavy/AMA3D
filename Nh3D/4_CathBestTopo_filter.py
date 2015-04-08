@@ -1,33 +1,57 @@
 # Script Version: 1.0
 # Author: Te Chen
 # Project: AMA3D
-# Task Step: 3
+# Task Step: 4
 
 # This script use information from PDB to select the best CATH topology representative among all homologous domains.
 # CathDomainList File format: CLF format 2.0, to find more info, please visit www.cathdb.info
+
+# R observed - Residual factor R for reflections that satisfy the resolution and observation limits. This quantity includes reflections set aside for cross-validation in a "free" R-factor set. Residual factor R for reflections that satisfy the resolution and observation limits. 
+# R all - Residual factor R for all reflections that satisfy the limits established by high and low resolution cut-offs. It includes reflections which do not satisfy the sigma cutoff criteria as well as those set aside for cross-validation in a "free" R-factor set. 
+# R work - Residual factor R for reflections that satisfy the resolution and observation limits and that were used as the working reflections in the refinement. This quantity does not include reflections set aside for cross-validation in a "free" R-factor set. 
+# R free - Residual factor R for reflections that satisfy the resolution and observation limits and that were excluded from refinement to be used for cross validation in a "free" R factor set. R free is a less biased metric, and is typically higher than an R work. If R free is significantly higher than the R work, the structural model may be over fitted. 
+
 
 import MySQLdb
 import sys
 import urllib2
 import xml.etree.ElementTree as ET
 
+R_CUT = 0.2
+RESO_CUT = 2.0
+CHAIN_LEN = 80
+
 def filter_pdb(pdb_id):
 	pdb_info = urllib2.urlopen('http://www.rcsb.org/pdb/rest/customReport.xml?pdbids=' + pdb_id +
-		'&customReportColumns=structureId,experimentalTechnique,rObserved,rAll,rWork,rFree,refinementResolution,chainId,chainLength')
+		'&customReportColumns=experimentalTechnique,rObserved,refinementResolution,chainLength')
 	retrived_pdb_xml = pdb_info.read()
 	root = ET.fromstring(retrived_pdb_xml)
-	method = root[0][2].text
-	R = float(root[0][5].text) 
-	reso = float(root[0][7].text)
 
-	if method == 'X-RAY DIFFRACTION' and R < 0.2 and reso <= 2.0:
-		return True, R, reso
+	method = root[0][2].text
+	R = float(root[0][3].text)
+	reso = float(root[0][4].text)
+	chain_len = int(root[0][5].text)
+
+	print method, R, reso, chain_len
+
+	if method == 'X-RAY DIFFRACTION' and R < R_CUT and reso <= RESO_CUT and chain_len >= CHAIN_LEN:
+		score = motif_score(R, reso)
+
+		# Write result to a tab delimited file.
+		with open("Domain_Result", "a") as f:
+			f.write("%s\t%f\t%f\t%d\t%f" % (pdb_id, R, reso, chain_len, score))
+
+		return score
 	else:
-		return False, R, reso
+		return -1
+
+def motif_score(R, reso):
+	rfc = (R_CUT - R) * 0.9
+	res = (RESO_CUT - reso) * 0.2
+	return sum(rfc, res) / 2.0
 
 # Read system input.
 topo_list = sys.argv[1:]
-
 
 # Connect to Database by reading Account File.
 file = open("Account", "r")
@@ -38,20 +62,18 @@ cursor = DB.cursor()
 # Find the best representative for each topology node.
 for topo in topo_list:
 
-	best_representative, best_R, best_reso = "", 0.63, 1000.0
+	best_representative, best_score = "", 0
 	cursor.execute("""SELECT Name FROM Domain WHERE TopoNode = \'%s\' """%(topo))
+	
 	domain_list = cursor.fetchall()
-	print domain_list
 	for domain_name in domain_list:
 		pdb_id = domain_name[0][:4]
 		# Find R-factor, Resolution of a domain.
-		print pdb_id
-		method, cur_R, cur_reso = filter_pdb(pdb_id)
-		print cur_R, cur_reso
-		print best_representative, best_R - cur_R, best_reso
-		if method == True and cur_R <= best_R and (cur_reso <= best_reso or abs(cur_reso - best_reso) < 0.10):
-			best_reso = cur_reso
-			best_R = cur_R
+		print "Working on: " + pdb_id
+		cur_score = filter_pdb(pdb_id)
+
+		if cur_score > best_score:
+			best_score = cur_score
 			best_representative = domain_name[0]
 	if best_representative != "":
 		cursor.execute("""UPDATE Topology SET Representative = \'%s\' WHERE Node = \'%s\'"""%(best_representative, topo))

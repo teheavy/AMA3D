@@ -553,9 +553,9 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`TriggeringCondition` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `Parameters` VARCHAR(45) NULL, -- This is for load method
   `idTaskResource` INT NOT NULL,
-  `idAgent` INT NOT NULL,
-  `IsLast` TINYINT(1) NOT NULL,
-  `Status` INT NOT NULL, -- 0 - open 1, -- in_progress
+  `idAgent` INT NULL,
+  `isLast` TINYINT(1) NOT NULL,
+  `Status` INT NOT NULL, -- 0 - open 1, -- in_progress, 2 = err, -1 = done
   PRIMARY KEY (`id`))
 ;
 
@@ -569,11 +569,7 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`TaskResource` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `Codepath` VARCHAR(45) NOT NULL,
   `Version` VARCHAR(45) NOT NULL,
-  `CPU` VARCHAR(45) NULL,
-  `RAM` VARCHAR(45) NULL,
-  `numTimesExecuted` INT NULL,
-  `OpSequence` VARCHAR(45) NULL,
-  `Wallclock` VARCHAR(45) NULL,
+  `Prerequisite` VARCHAR(45) NULL, -- Finish these tasks to contiune, format: task1\ttask2\ttask3...
   `Program` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`))
 ;
@@ -619,8 +615,10 @@ CREATE TABLE IF NOT EXISTS `AMA3D`.`Machines` (
 DROP TABLE IF EXISTS `AMA3D`.`LogActivity` ;
 CREATE TABLE IF NOT EXISTS `AMA3D`.`LogActivity` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `AgentID` INT NOT NULL,
-  `MachineID` INT NOT NULL,
+  `idAgent` INT NOT NULL,
+  `idMachine` INT NOT NULL,
+  `idTask` INT NOT NULL,
+  `isLast` TINYINT(1) NOT NULL,
   `TimeStamp` DATETIME NOT NULL,
   `Activity` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`))

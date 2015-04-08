@@ -16,13 +16,16 @@ TRUNCATE table User;
 INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('./Nh3D/1_AMA3D_start.py', '1.0', 'python');
 INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('./Nh3D/2_CathDomainList_filter.py', '1.0', 'python');
 INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('./Nh3D/3_CathTopo_uploader.py', '1.0', 'python');
-INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('./Nh3D/4_CathBestTopo_filter.py', '1.0', 'python');
+INSERT INTO TaskResource(Codepath, Version, Prerequisite, Program) VALUES ('./Nh3D/4_CathBestTopo_filter.py', '1.0', '2', 'python');
 INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('', '1.0', 'pwd');
 INSERT INTO TaskResource(Codepath, Version, Program) VALUES ('lol.py', '1.0', 'python');
 
-INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 1, 0, 0);
-INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 2, 0, 0);
-INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 3, 0, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 1, 1, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 2, 1, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 3, 1, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 4, 1, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 5, 1, 0);
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 6, 1, 0);
 
 INSERT INTO Machines(User, Path, Host) VALUES ('hsueh', '/home/hsueh/AMA3D', '142.150.40.189');
 INSERT INTO Machines(User, Path, Host) VALUES ('chen', '/home/chen/AMA3D', '142.150.40.189');
@@ -43,6 +46,8 @@ SELECT * FROM TriggeringCondition;
 SELECT * FROM LogActivity;
 
 --5. Check Nh3D Info.
+TRUNCATE table Agent;
+TRUNCATE table TriggeringCondition;
 TRUNCATE table Domain;
 TRUNCATE table Topology;
 

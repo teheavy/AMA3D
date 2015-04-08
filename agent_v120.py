@@ -1,4 +1,4 @@
-#Version 1.1.5
+#Version 1.2.0
 # agent.py's assumption/ preconditions	
 # db set up. Including tables with the following info:
 	# a list of available machines (uername + passwords + host + abs path 
@@ -106,7 +106,6 @@ def decide_next(seconds, threshold):
 
         while not die():
 
-                AGENT_ID = G.AGENT_ID
                 DB = G.DB
                 cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
@@ -156,7 +155,7 @@ def decide_next(seconds, threshold):
                                                       FROM TriggeringCondition WHERE Status = 0""")
                                 results = cursor.fetchall()[0]
 
-                                idTC = results['id']
+                                idTC = int(results['id'])
                                 G.TASK_ID = results['idTaskResource']
                                 G.LAST_TASK = results['isLast']
                                 print "idTC: " + str(idTC)
@@ -173,14 +172,14 @@ def decide_next(seconds, threshold):
                                 cursor.execute("""UPDATE TriggeringCondition SET \
                                                 idAgent = %d, \
                                                 Status = 1 \
-                                                WHERE id = %d"""  %  (int(G.AGENT_ID), idTC))
+                                                WHERE id = %d"""  %  (G.AGENT_ID, idTC))
 
                                 #update Agent table
                                 cursor.execute("""UPDATE Agent SET \
                                                 StartTime = '%s', \
                                                 Status = 1, \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(G.AGENT_ID)))
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
 
                                 #load and execute methods
                                 status = load_methods(G.TASK_ID)
@@ -189,13 +188,16 @@ def decide_next(seconds, threshold):
                                         # successfully completed the task
                                         # remove TC and write to log file
                                         # addition of new TC will be taken care of by program executed
-                                        cursor.execute("""DELETE FROM TriggeringCondition \
-                                                WHERE id = %d"""  %  (idTC))
 
-                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % int(G.AGENT_ID))
+                                        # VERSION 1.2.0 REMOVE TC IS DISABLED
+                                        # cursor.execute("""DELETE FROM TriggeringCondition \
+                                        #         WHERE id = %d"""  %  (idTC))
+                                        cursor.execute("""UPDATE TriggeringCondition SET Status = -1 WHERE id = %d""" % (idTC))
+
+                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % G.AGENT_ID)
 
                                         NumTaskDone = cursor.fetchall()[0]["NumTaskDone"] + 1
-                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, int(G.AGENT_ID)))
+                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, G.AGENT_ID))
 
                                         record_log_activity("Task %d sucessfully completed." %idTC, False)
                                 else:
@@ -205,7 +207,7 @@ def decide_next(seconds, threshold):
                                                 Status = 2 \
                                                 WHERE id = %d"""  %  (idTC))
 
-                                        record_log_activity("Executing method failed: Task %d, error number: %d." % (idTC, status), True)
+                                        record_log_activity("Executing method failed: Triggering condition: %d, Task %d, error number: %d." % (idTC, G.TASK_ID, status), True)
                                         # if task failed, reset TC to open and log the errors
                                         # limit the number of times to attempt the TC?
 
@@ -215,7 +217,7 @@ def decide_next(seconds, threshold):
                                                 StartTime = '%s', \
                                                 Status = 0, \
                                                 Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), int(G.AGENT_ID)))
+                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
 
                                 DB.commit()
 
@@ -333,7 +335,7 @@ def spawn(machineID):
                 machine_info = cursor.fetchall()[0]
 
                 port = machine_info['Port']
-                agent_path = machine_info['Path'] + "/agent_v115.py" #software folder
+                agent_path = machine_info['Path'] + "/agent_v120.py" #software folder
 
                 host_addr = machine_info['User'] + "@" + machine_info['Host'] #user@host
 
@@ -380,12 +382,14 @@ def load_methods(idTR):
 
                 # Check prerequisite before loading tasks.
                 status = wait(prerequisite)
+                
                 if status == 0:
-                    code_path = base_path + "/" + rel_path
-                    # code_path = rel_path
-                    print "Loading task: " + code_path
                     # execute the program
+                    code_path = base_path + "/" + rel_path
+                    print "Loading task: " + code_path
                     proc = subprocess.Popen([program, code_path, G.PARAM], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+                    
+                    # Receiving signals from tasks, this part can be customized so that agent can response according to task.
                     for line in iter(proc.stdout.readline,''):
                         out = line.rstrip()
                         print "Output from %s: %s"%(rel_path, out)
@@ -394,16 +398,19 @@ def load_methods(idTR):
                             trigger(out)
 
                     err = proc.communicate()[1]
+                    
                     if err != "":
                         print "An Error Occurred: " + err 
+                    
                     print "\n"
                     return proc.returncode
+                
                 else:
+                    print "Something went wrong, skipping the task... Check TaskResource and TriggeringCondition Table"
                     return status
 
         except Exception as err:
                 print traceback.format_exc()
-                cursor.execute("""UPDATE Agent SET Status = 2 WHERE id = %d"""  %  int(G.AGENT_ID))
                 record_log_activity("load_methods: db failure or unsuccessful subprocess call. " + str(err), True)
                 return 4444
 
@@ -411,10 +418,10 @@ def load_methods(idTR):
 def trigger(out):
         """ 
         (str) -> ()
-        Dynamically load a module that its file path is known.
+        When trigger signal is received, open up a new triggering condition.
 
         Keyword arguments:
-        idTR -- id number of TaskResource table
+        out -- A string that has format "trigger    Parameter   idTaskResource  isLast" that delimited by tabs.
         """
         DB = G.DB
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
@@ -432,15 +439,19 @@ def trigger(out):
 def wait(prerequisite):
         """ 
         (str) -> (int)
-        Dynamically load a module that its file path is known.
+        Check if all prerequisites are fulfilled before loading tasks.
 
         Keyword arguments:
-        idTR -- id number of TaskResource table
+        prerequisite -- A string that has format "task1 task2   task3..." that delimited by tabs.
         """
         DB = G.DB
         cursor = DB.cursor(MySQLdb.cursors.DictCursor)
 
         try:
+            print prerequisite
+            if prerequisite == None:
+                return 0
+
             tasks = prerequisite.split("\t")
             
             # Status table will be used to track all prerequisite task status.
@@ -452,13 +463,19 @@ def wait(prerequisite):
 
                     # Wait for all the agents to finish specified tasks, otherwise unload task and flag error.
                     status[task] = 1
-                    while status[task] != 0:
+                    timeout = 0
+                    while status[task] != 0 and timeout <= 5:
 
-                        cursor.execute( "SELECT Status, isLast FROM TriggeringCondition WHERE idTaskResource = %d"%(int(task)))
+                        cursor.execute( "SELECT Status FROM TriggeringCondition WHERE idTaskResource = %d"%(int(task)))
                         agent_status = cursor.fetchall()
 
-                        if len([s for s in agent_status if 2 == s["Status"]]) > 0:
-                            print "Some agents failed to finish task " + inputs[1]
+                        if len(agent_status) == 0:
+                            print "Prerequisite tasks are not available yet, wait for 10 secs"
+                            time.sleep(10)
+                            timeout += 1
+
+                        elif len([s for s in agent_status if 2 == s["Status"]]) > 0:
+                            print "Some agents failed to finish task " + task
                             
                             answer = raw_input('Do you want to fix problems before continue? Type "F" to stop and unload this task, Type anything else to take a break: ')
                             if answer == "F":
@@ -467,25 +484,34 @@ def wait(prerequisite):
                             else:
                                 print "Waiting for 30 secs..."
                                 time.sleep(30)
-                                raw_input('Type anything to resume: ')                
+                                raw_input('Type anything to resume: ')
+                                timeout += 1
                         
-                        elif len([s for s in agent_status if (1 == s["Status"]]) or (0 == s["Status"])) > 0:
-                            print "Waiting for some agents to finish task " + inputs[1]
-                            time.sleep(5)
+                        elif len([s for s in agent_status if (1 == s["Status"]) or (0 == s["Status"])]) > 0:
+                            print "Waiting for some agents to finish task " + task
+                            time.sleep(10)
+                            timeout += 1
                         
                         else:
-                            cursor.execute( "SELECT Status FROM LogActivity WHERE idTask = %d AND isLast = %d"%(int(task), 1))
-                            logs = cursor.fetchall()
-                            status = 0
-                
-            return status
+                            cursor.execute( "SELECT Status FROM TriggeringCondition WHERE idTaskResource = %d AND isLast = %d" % (int(task), 1))
+                            last_status = cursor.fetchall()
+                            if all(s.values()[0] == -1 for s in last_status) == True:
+                                status[task] = 0
+
+            if all(v == 0 for v in status.values()) == True:
+                print "Prerequisites are fulfilled!"
+                return 0
+            else:
+                print "Timeout..."
+                return 2
+
         except Exception as err:
             print traceback.format_exc()
             record_log_activity("wait: Something wrong with checking agent status.", True)
 
 
 #agent terminates itself
-def terminate_self():
+def terminate_self(force=True):
         '''
         () -> ()
         Input: whether to wait for agent to finish its task or not.
@@ -493,19 +519,23 @@ def terminate_self():
                 if finished, delete the agent from status table and exit the program.
         '''
         try:
-            if G.AGENT_ID != "":
+            if G.AGENT_ID != 0:
+
                 DB = G.DB
                 cursor = DB.cursor()
 
-                cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
-                status = cursor.fetchone()[0]
-                count = 0
-                while status == 1 and count < 60:
-                        cursor.execute( "SELECT Status FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                if force == False:
+                    cursor.execute( "SELECT Status FROM Agent WHERE id = %d"  %  G.AGENT_ID)
+                    status = cursor.fetchone()[0]
+                    count = 0
+                    while status == 1 and count <= 20:
+                        if count == 0:
+                            print "Agent is still working now, will wait for 5 mins"
+                        cursor.execute( "SELECT Status FROM Agent WHERE id = %d"  %  G.AGENT_ID)
                         status = cursor.fetchone()[0]
-                        time.sleep(5)
+                        time.sleep(15)
                         count += 1
-                cursor.execute( "DELETE FROM Agent WHERE id = %s"  %  G.AGENT_ID)
+                cursor.execute( "DELETE FROM Agent WHERE id = %d"  %  G.AGENT_ID)
                 print "\nHappy Agent " + str(G.AGENT_ID) + " is not here now\n"
                 DB.commit()
                 DB.close()
@@ -542,12 +572,12 @@ def record_log_activity(activity, notify=True):
                 activity = re.sub('\'', '\"', activity)
 
                 cursor.execute("""INSERT INTO LogActivity(idAgent, idMachine, idTask, isLast, TimeStamp, Activity) \
-                         VALUES (%s, %s, '%s', '%s')"""  % (G.AGENT_ID, G.MACHINE_ID, G.TASK_ID, G.LAST_TASK, time, activity))
+                         VALUES (%d, %d, %d, %d, '%s', '%s')"""  % (G.AGENT_ID, G.MACHINE_ID, G.TASK_ID, G.LAST_TASK, time, activity))
 
                 DB.commit()
 
                 if notify == True:
-                        notify_admin(activity + "\nAgent ID: " + str(G.AGENT_ID) + "\nMachine ID: " + str(machineID) + "\nAMA3D Time: " + str(time))
+                        notify_admin("Activity: \n%s\n Agent ID: %d\n Machine ID: %d\n Task ID: %d\n Last Task: %d\n Agent Time: %s\n" % (activity, G.AGENT_ID, G.MACHINE_ID, G.TASK_ID, G.LAST_TASK, str(time)))
 
                 return True
 
@@ -565,18 +595,20 @@ def notify_admin(m):
         msg -- the message to be sent
         """
 
+        DB = G.DB
+        cursor = DB.cursor(MySQLdb.cursors.DictCursor)
+
         try:
-            DB = G.DB
-            cursor = DB.cursor()
+
             cursor.execute("""SELECT Username, Email FROM User""")
             user_info = cursor.fetchall()
 
             for i in xrange(len(user_info)):
             
-                msg = MIMEText("Dear " + user_info[i][0] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
+                msg = MIMEText("Dear " + user_info[i]["Username"] + ",\n" + str(m)  + "\n" + "All the best, \nAMA3D Happy Agent (ID: " + str(G.AGENT_ID) + " )")
                 msg['Subject'] = "AMA3D - Error"
                 msg['From'] = G.MYEMAIL
-                msg['To'] = user_info[i][1]
+                msg['To'] = user_info[i]["Email"]
 
                 # print msg.as_string()
 
@@ -614,7 +646,7 @@ def essehozaibashsei():
 
     # May change these to global variables
     TIME = 5
-    THRESHOLD = 4
+    THRESHOLD = 1
 
     # Parse File
     with open("Account", "r") as file:
@@ -627,7 +659,7 @@ def essehozaibashsei():
 if __name__ == '__main__':
     path = "~/AMA3D"
     os.chdir(os.path.expanduser(path)) 
-    print os.getcwd()
+    print "Current DIR is: " + os.getcwd()
     
     t = threading.Thread(target=essehozaibashsei)
     t.start()
