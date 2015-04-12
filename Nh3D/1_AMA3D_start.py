@@ -38,7 +38,7 @@ def download_file(ver, file_name):
 
 if __name__ == '__main__':
 	# Download necessary files when start
-	# prepare_cath()
+	prepare_cath()
 
 	# This part triggers all the tasks afterwards.
 
@@ -47,3 +47,7 @@ if __name__ == '__main__':
 
 	print "trigger\t%s\t%d\t%d"%('', 3, 1)
 	sys.stdout.flush()
+
+	# Write result to a file as well just for testing
+	with open("Domain_Result", "w") as f:
+			f.write("Topology\tPDB ID\tR\tResolution\tChain Length\tScore\n")

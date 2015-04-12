@@ -121,6 +121,10 @@ def decide_next(seconds, threshold):
                         cursor.execute("""SELECT count(*) as numAG FROM Agent""")
                         numAG = cursor.fetchall()[0]['numAG']
 
+                        # cursor.execute("""show variables like 'max_connections'""") 
+                        # max_connections = cursor.fetchone()['Value'] / 2 # Since each task may use the connections as well
+                        max_connections = 20
+                        
                         if numTC == 0: #no open TC => idle
                                 count += 1
                                 if count > 5 and numAG > 1:
@@ -132,7 +136,7 @@ def decide_next(seconds, threshold):
                                         print "number of agents alive in the system: " + str(numAG)
                                         print "trying again in " + str(seconds) + " seconds."
                         else:
-                                if numTC > threshold and numTC > numFreeAG: #number of open TC greater than threshold => spawn one agent
+                                if numTC > threshold and numTC < max_connections and numTC > numFreeAG: #number of open TC greater than threshold => spawn one agent
                                         print "There are: " + str(numTC) + " triggering conditions."
                                         print "Busy threshold is: " + str(threshold)
                                         bestMachine = find_resources()
@@ -153,74 +157,76 @@ def decide_next(seconds, threshold):
                                 #Future implementation: can make agent smarter by choosing a task by type
                                 cursor.execute("""SELECT id, idTaskResource, Parameters, isLast \
                                                       FROM TriggeringCondition WHERE Status = 0""")
-                                results = cursor.fetchall()[0]
+                                results = cursor.fetchall()
 
-                                idTC = int(results['id'])
-                                G.TASK_ID = results['idTaskResource']
-                                G.LAST_TASK = results['isLast']
-                                print "idTC: " + str(idTC)
-                                print "idTaskResource: " + str(G.TASK_ID)
-                                print "isLast: " + str(G.LAST_TASK)
+                                if len(results) != 0:
+                                    idTC = int(results[0]['id'])
+                                    G.TASK_ID = results[0]['idTaskResource']
+                                    G.LAST_TASK = results[0]['isLast']
+                                    print "idTC: " + str(idTC)
+                                    print "idTaskResource: " + str(G.TASK_ID)
+                                    print "isLast: " + str(G.LAST_TASK)
 
-                                #globally stores parameters for to be used by load_methods
-                                #so that the agent can spawn more agents with preloaded methods
-                                #and just update PARAM
-                                G.PARAM = results['Parameters']
-                                print str(G.PARAM)
+                                    #globally stores parameters for to be used by load_methods
+                                    #so that the agent can spawn more agents with preloaded methods
+                                    #and just update PARAM
+                                    G.PARAM = results[0]['Parameters']
+                                    print str(G.PARAM)
 
-                                #update TriggeringCondition table
-                                cursor.execute("""UPDATE TriggeringCondition SET \
-                                                idAgent = %d, \
-                                                Status = 1 \
-                                                WHERE id = %d"""  %  (G.AGENT_ID, idTC))
+                                    #update TriggeringCondition table
+                                    cursor.execute("""UPDATE TriggeringCondition SET \
+                                                    idAgent = %d, \
+                                                    Status = 1 \
+                                                    WHERE id = %d"""  %  (G.AGENT_ID, idTC))
 
-                                #update Agent table
-                                cursor.execute("""UPDATE Agent SET \
-                                                StartTime = '%s', \
-                                                Status = 1, \
-                                                Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
+                                    #update Agent table
+                                    cursor.execute("""UPDATE Agent SET \
+                                                    StartTime = '%s', \
+                                                    Status = 1, \
+                                                    Priority = %d \
+                                                    WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
 
-                                #load and execute methods
-                                status = load_methods(G.TASK_ID)
+                                    #load and execute methods
+                                    status = load_methods(G.TASK_ID)
 
-                                if status == 0:
-                                        # successfully completed the task
-                                        # remove TC and write to log file
-                                        # addition of new TC will be taken care of by program executed
+                                    if status == 0:
+                                            # successfully completed the task
+                                            # remove TC and write to log file
+                                            # addition of new TC will be taken care of by program executed
 
-                                        # VERSION 1.2.0 REMOVE TC IS DISABLED
-                                        # cursor.execute("""DELETE FROM TriggeringCondition \
-                                        #         WHERE id = %d"""  %  (idTC))
-                                        cursor.execute("""UPDATE TriggeringCondition SET Status = -1 WHERE id = %d""" % (idTC))
+                                            # VERSION 1.2.0 REMOVE TC IS DISABLED
+                                            # cursor.execute("""DELETE FROM TriggeringCondition \
+                                            #         WHERE id = %d"""  %  (idTC))
+                                            cursor.execute("""UPDATE TriggeringCondition SET Status = -1 WHERE id = %d""" % (idTC))
 
-                                        cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % G.AGENT_ID)
+                                            cursor.execute("""SELECT NumTaskDone FROM Agent WHERE id = %d""" % G.AGENT_ID)
 
-                                        NumTaskDone = cursor.fetchall()[0]["NumTaskDone"] + 1
-                                        cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, G.AGENT_ID))
+                                            NumTaskDone = cursor.fetchall()[0]["NumTaskDone"] + 1
+                                            cursor.execute("""UPDATE Agent SET NumTaskDone = %d WHERE id = %d""" % (NumTaskDone, G.AGENT_ID))
 
-                                        record_log_activity("Task %d sucessfully completed." %idTC, False)
+                                            record_log_activity("Task %d sucessfully completed." %idTC, False)
+                                    else:
+                                            # fail
+                                            # reset TC 
+                                            cursor.execute("""UPDATE TriggeringCondition SET \
+                                                    Status = 2 \
+                                                    WHERE id = %d"""  %  (idTC))
+
+                                            record_log_activity("Executing method failed: Triggering condition: %d, Task %d, error number: 2." % (idTC, G.TASK_ID), True)
+                                            # if task failed, reset TC to open and log the errors
+                                            # limit the number of times to attempt the TC?
+
+                                    #update Agent table to 0 (for free)
+                                    #agent status is not used by the system yet
+                                    cursor.execute("""UPDATE Agent SET \
+                                                    StartTime = '%s', \
+                                                    Status = 0, \
+                                                    Priority = %d \
+                                                    WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
+
+                                    DB.commit()
                                 else:
-                                        # fail
-                                        # reset TC 
-                                        cursor.execute("""UPDATE TriggeringCondition SET \
-                                                Status = 2 \
-                                                WHERE id = %d"""  %  (idTC))
-
-                                        record_log_activity("Executing method failed: Triggering condition: %d, Task %d, error number: %d." % (idTC, G.TASK_ID, status), True)
-                                        # if task failed, reset TC to open and log the errors
-                                        # limit the number of times to attempt the TC?
-
-                                #update Agent table to 0 (for free)
-                                #agent status is not used by the system yet
-                                cursor.execute("""UPDATE Agent SET \
-                                                StartTime = '%s', \
-                                                Status = 0, \
-                                                Priority = %d \
-                                                WHERE id = %d"""  %  (datetime.datetime.now(), calculate_priority(idTC), G.AGENT_ID))
-
-                                DB.commit()
-
+                                    print "No open tasks right now, checking again..."
                                 #Reset waiting times
                                 count = 0
 				
@@ -232,7 +238,6 @@ def decide_next(seconds, threshold):
 
         print "Received Die Signal\nGoodnight, my boss!"
         terminate_self()
-        
 
 
 #Helper function for decide_next()
@@ -464,7 +469,7 @@ def wait(prerequisite):
                     # Wait for all the agents to finish specified tasks, otherwise unload task and flag error.
                     status[task] = 1
                     timeout = 0
-                    while status[task] != 0 and timeout <= 5:
+                    while status[task] != 0 and timeout <= 2:
 
                         cursor.execute( "SELECT Status FROM TriggeringCondition WHERE idTaskResource = %d"%(int(task)))
                         agent_status = cursor.fetchall()
@@ -476,7 +481,7 @@ def wait(prerequisite):
 
                         elif len([s for s in agent_status if 2 == s["Status"]]) > 0:
                             print "Some agents failed to finish task " + task
-                            
+
                             answer = raw_input('Do you want to fix problems before continue? Type "F" to stop and unload this task, Type anything else to take a break: ')
                             if answer == "F":
                                 print "Unloading task..."
@@ -485,7 +490,7 @@ def wait(prerequisite):
                                 print "Waiting for 30 secs..."
                                 time.sleep(30)
                                 raw_input('Type anything to resume: ')
-                                timeout += 1
+                            timeout += 1
                         
                         elif len([s for s in agent_status if (1 == s["Status"]) or (0 == s["Status"])]) > 0:
                             print "Waiting for some agents to finish task " + task
@@ -646,7 +651,7 @@ def essehozaibashsei():
 
     # May change these to global variables
     TIME = 5
-    THRESHOLD = 1
+    THRESHOLD = 3
 
     # Parse File
     with open("Account", "r") as file:

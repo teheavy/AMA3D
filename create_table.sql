@@ -12,9 +12,10 @@ DROP TABLE IF EXISTS `AMA3D`.`Topology` ;
 
 CREATE TABLE IF NOT EXISTS `AMA3D`.`Topology` (
   `Node` VARCHAR(20) NOT NULL UNIQUE,
-  `Description` VARCHAR(45) NULL,
+  `Description` VARCHAR(255) NULL,
   `Comment` VARCHAR(255) NULL,
   `Representative` CHAR(7) NULL,
+  `Score` FLOAT NULL ,  
   PRIMARY KEY (`Node`),
   CONSTRAINT `Representative`
     FOREIGN KEY (`Representative`)

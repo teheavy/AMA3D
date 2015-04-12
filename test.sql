@@ -46,8 +46,6 @@ SELECT * FROM TriggeringCondition;
 SELECT * FROM LogActivity;
 
 --5. Check Nh3D Info.
-TRUNCATE table Agent;
-TRUNCATE table TriggeringCondition;
 TRUNCATE table Domain;
 TRUNCATE table Topology;
 
@@ -55,3 +53,10 @@ SELECT * FROM Domain;
 SELECT * FROM Topology;
 
 --0. Reset database.6
+
+TRUNCATE table Agent;
+TRUNCATE table TriggeringCondition;
+TRUNCATE table Domain;
+TRUNCATE table Topology;
+TRUNCATE table LogActivity;
+INSERT INTO TriggeringCondition(Parameters ,idTaskResource, isLast, Status) VALUES ('', 1, 1, 0);

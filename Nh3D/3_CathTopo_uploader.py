@@ -19,7 +19,7 @@ cursor = DB.cursor()
 
 # Read the node list and register CATH topology into database.
 os.getcwd()
-node_file = open("./Nh3D/CathNames_sample", "r")
+node_file = open("./Nh3D/CathNames", "r")
 line = node_file.readline()
 
 trigger = ''
@@ -31,7 +31,9 @@ while line:
 			if node_info[0].count('.') == 2:
 				print "Working on Node: " + node_info[0]
 				cursor.execute("""INSERT INTO Topology(Node, Description, Comment, Representative) VALUES (\'%s\', \'%s\', \'%s\', \'%s\')"""
-					%(node_info[0], node_info[2][1:], 'This representative gets from CathNames', node_info[1]))
+					% (node_info[0], str(MySQLdb.escape_string(node_info[2][1:-1])), 'from CathNames', node_info[1]))
+				# print """INSERT INTO Topology(Node, Description, Comment, Representative) VALUES (\'%s\', \'%s\', \'%s\', \'%s\')"""\
+				# 	% (node_info[0], (node_info[2][1:-1]).replace(";", ""), 'from CathNames', node_info[1])
 				# Trigger a new TC
 				print trigger
 				sys.stdout.flush()
