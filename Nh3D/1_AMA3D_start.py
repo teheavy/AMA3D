@@ -12,13 +12,14 @@ def prepare_cath():
 	ver = VERSION.replace('.', '_')
 	download_file(ver, 'CathDomainList')
 	download_file(ver, 'CathNames')
+	download_file(ver, 'CathDomainDescriptionFile')
 
 def download_file(ver, file_name):
 	url = "ftp://ftp.biochem.ucl.ac.uk/pub/cath/v%s/%s" % (ver, file_name)
 
 	file_name = url.split('/')[-1]
 	u = urllib2.urlopen(url)
-	f = open('./Nh3D/' + file_name, 'wb')
+	f = open('C:/AMA3D/Nh3D/' + file_name, 'wb')
 	meta = u.info()
 	file_size = int(meta.getheaders("Content-Length")[0])
 	print "Downloading: %s Bytes: %s" % (file_name, file_size)
@@ -32,7 +33,7 @@ def download_file(ver, file_name):
 
 	    file_size_dl += len(buffer)
 	    f.write(buffer)
-
+	    
 	f.close()
 	print "Downloaded file" + file_name
 
