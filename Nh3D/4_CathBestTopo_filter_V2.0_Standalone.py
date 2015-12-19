@@ -1,30 +1,16 @@
-# Script Version: 1.0
-# Author: Tsz Kwong Lee
+# Script Version: 2.0
+# Author: Tsz Kwong Lee (Samuel)
 # Project: AMA3D
 # Task Step: 4
 
-# This script use information from PDB to select the best CATH topology representative among all homologous domains.
-# CathDomainList File format: CLF format 2.0, to find more info, please visit www.cathdb.info
-
-# R observed - Residual factor R for reflections that satisfy the resolution and observation limits. This quantity includes reflections set aside for cross-validation in a "free" R-factor set. Residual factor R for reflections that satisfy the resolution and observation limits. 
-# R all - Residual factor R for all reflections that satisfy the limits established by high and low resolution cut-offs. It includes reflections which do not satisfy the sigma cutoff criteria as well as those set aside for cross-validation in a "free" R-factor set. 
-# R work - Residual factor R for reflections that satisfy the resolution and observation limits and that were used as the working reflections in the refinement. This quantity does not include reflections set aside for cross-validation in a "free" R-factor set. 
-# R free - Residual factor R for reflections that satisfy the resolution and observation limits and that were excluded from refinement to be used for cross validation in a "free" R factor set. R free is a less biased metric, and is typically higher than an R work. If R free is significantly higher than the R work, the structural model may be over fitted. 
-
-
-import MySQLdb
-import sys
-import urllib2
-import xml.etree.ElementTree as ET
 import re
+import urllib2
+import subprocess
+import xml.etree.ElementTree as ET
 from Domain import domain
 from Domain import segment
 import time
 import math
-
-R_CUT = 0.20
-RESO_CUT = 2.0
-CHAIN_LEN = 80
 
 file_name = "CathDomainDescriptionFile"
 
@@ -54,7 +40,7 @@ def filter_pdb(domain, topo):
 		with open("Domain_Result", "a") as f:
 			f.write("%s\t%s\t%.3f\t%.2f\t%d\tnull\n" % (topo, pdb_id, R, reso, mutation))
 		return -1
-
+	
 #Return a new domain class object that includes the info we need for calculating the score		
 def setup_domain(domain_name):
 	try:
@@ -257,9 +243,10 @@ def has_prosthetic_grp (domain):
 			if 'APO' in line:
 				return False
 			
-	return True	
+	return True		
 
 #--------Helper Functions for B-Factor, Reso, and R-value correction ----------------------
+
 def logisticFunction_BFactor(domain):
 	factor_total = 0
 	pdbID = domain.pdb_id
@@ -273,8 +260,7 @@ def logisticFunction_BFactor(domain):
 					BFactor = float(line[60:66].strip())
 					factor_total = factor_total + (1 - logisticFunction(-0.22, BFactor, 45))
 					
-	return factor_total	
-
+	return factor_total				
 def logisticFunction_Reso(domain):
 	reso = domain.reso
 	score = logisticFunction(-7.324, reso, 2.1)
@@ -305,40 +291,15 @@ def trim(string):
 	
 	return formedString
 
-# Read system input.
-topo_list = sys.argv[1:]
+#lines for testing
+if __name__ == '__main__':
+	domain = setup_domain('3q8gA02')
+	#print domain
+	topo = "test"
+	print filter_pdb(domain, topo)
+	
 
-# Connect to Database by reading Account File.
-file = open("Account", "r")
-parsed = file.readline().split()
-DB = MySQLdb.connect(host=parsed[0], user=parsed[1], passwd=parsed[2], db=parsed[3])
-cursor = DB.cursor()
 
-# Find the best representative for each topology node.
-for topo in topo_list:
-	print "Working on Topology: " + topo
 
-	best_representative, best_score = "", 0
-	cursor.execute("""SELECT Name FROM Domain WHERE TopoNode = \'%s\' """%(topo))
 
-	domain_list = cursor.fetchall()
-	for domain_name in domain_list:
-		domain = setup_domain(domain_name)
-		
-		print "Working on domain: " + domain_name
 
-		cur_score = filter_pdb(domain, topo)
-		if cur_score > best_score:
-			best_score = cur_score
-			best_representative = domain_name[0]
-
-	if best_representative != "":
-		with open("Domain_Result", "a") as f:
-			f.write("BEST REPRESENTATIVE\t%s\t%s\n" % (topo, best_representative[:4]))
-		cursor.execute("""UPDATE Topology SET Representative = \'%s\', Score = \'%.3f\' WHERE Node = \'%s\'"""%(best_representative, best_score, topo))
-	else:
-		print "Cannot find a representative"
-
-# Wrap up and close connection.
-DB.commit()
-DB.close()
