@@ -142,6 +142,7 @@ def motif_score(domain):
 	
 	resoAdjust = logisticFunction_Reso(domain)	
 	rAdjust = logisticFunction_Rvalue(domain)
+	occupancyAdjust = occupancyTest(domain)
 	
 	score = (length - bFactorAdjust - mutationAdjust - pAdjust) * resoAdjust * rAdjust
 	
@@ -245,7 +246,7 @@ def has_prosthetic_grp (domain):
 			
 	return True		
 
-#--------Helper Functions for B-Factor, Reso, and R-value correction ----------------------
+#--------Helper Functions for B-Factor, Reso, R-value correction, and Occupancy ----------------------
 
 def logisticFunction_BFactor(domain):
 	factor_total = 0
@@ -260,7 +261,8 @@ def logisticFunction_BFactor(domain):
 					BFactor = float(line[60:66].strip())
 					factor_total = factor_total + (1 - logisticFunction(-0.22, BFactor, 45))
 					
-	return factor_total				
+	return factor_total	
+
 def logisticFunction_Reso(domain):
 	reso = domain.reso
 	score = logisticFunction(-7.324, reso, 2.1)
@@ -281,6 +283,22 @@ def logisticFunction(k, x, mid):
 	result = 1/(1+ math.exp(exponent))
 	return result
 
+def occupancyTest (domain):
+	pdbID = domain.pdb_id
+	pdb_info = urllib2.urlopen('http://www.rcsb.org/pdb/files/'+ pdbID+'.pdb')
+	discardResidue = 0	
+	
+	for line in pdb_info:
+		if (line[0:4] == 'ATOM'):	
+			serial_num = int(line[6:11].strip())
+			
+			for segment in domain.segment:
+				if (serial_num >= segment.startpos and serial_num <= segment.endpos):
+					occupancy = float(line[55:60].strip())
+					if (occupancy != 1.0):
+						discardResidue = discardResidue + 1
+			
+	return discardResidue
 #------------------------ Other Helper Function----------------------------
 
 #This is a helper function to cut out all whitespaces and \n in a line
