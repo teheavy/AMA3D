@@ -92,9 +92,18 @@ def setup_domain(domain_name):
 		check_Requests(pdb_info)
 
 		dictionary = xmltodict.parse(pdb_info.text)
+
 		info_dataset = dictionary['dataset']['record']
-		#needs debug
-		info = info_dataset[0]
+
+		#This means the protein has multiple chains
+		if type(info_dataset) is list:
+			#here we don't care which chain to look into since method, R value and resolution are the same for all chains
+			info = info_dataset[0]
+		#this means the protein has only one chain
+		else:
+			info = info_dataset
+
+
 		method = info['dimStructure.experimentalTechnique']
 
 		if (info['dimStructure.rFree'] == 'null'):
@@ -166,8 +175,21 @@ def passCutOff(domain):
 	This function takes a Domain Class Object and evaluate it to check if the domain passes the
 	cut off in order for it to be included for ranking. 
 	"""
-	if domain.method != 'X-RAY DIFFRACTION' or domain.r < 0.25 or domain.reso > 2.2 or domain.length < 80 or domain.mutation > 5:
+	if domain.method != 'X-RAY DIFFRACTION':
+		print "method does not meet cutoff"
 		return False
+	elif domain.r > 0.25:
+		print "R value does not meet cutoff"
+		return False
+	elif domain.reso > 2.2:
+		print "Resolution does not meet cutoff"
+		return False
+	elif domain.length < 80:
+		print "Domain Length does not meet cutoff"
+		return False		
+	elif domain.mutation > 5:
+		print "Number of mutations does not meet cutoff"
+		return False	
 	else:
 		return True
 	
