@@ -1,16 +1,7 @@
-# Script Version: 1.0
-# Author: Tsz Kwong Lee
+# Script Version: 2.0
+# Author: Tsz Kwong Lee (Samuel)
 # Project: AMA3D
 # Task Step: 4
-
-# This script use information from PDB to select the best CATH topology representative among all homologous domains.
-# CathDomainList File format: CLF format 2.0, to find more info, please visit www.cathdb.info
-
-# R observed - Residual factor R for reflections that satisfy the resolution and observation limits. This quantity includes reflections set aside for cross-validation in a "free" R-factor set. Residual factor R for reflections that satisfy the resolution and observation limits. 
-# R all - Residual factor R for all reflections that satisfy the limits established by high and low resolution cut-offs. It includes reflections which do not satisfy the sigma cutoff criteria as well as those set aside for cross-validation in a "free" R-factor set. 
-# R work - Residual factor R for reflections that satisfy the resolution and observation limits and that were used as the working reflections in the refinement. This quantity does not include reflections set aside for cross-validation in a "free" R-factor set. 
-# R free - Residual factor R for reflections that satisfy the resolution and observation limits and that were excluded from refinement to be used for cross validation in a "free" R factor set. R free is a less biased metric, and is typically higher than an R work. If R free is significantly higher than the R work, the structural model may be over fitted. 
-
 
 import re
 import sys
@@ -23,10 +14,6 @@ from Domain import segment
 import time
 import math
 import requests
-
-R_CUT = 0.20
-RESO_CUT = 2.0
-CHAIN_LEN = 80
 
 file_name = "CathDomainDescriptionFile"
 
@@ -42,7 +29,7 @@ def filter_pdb(domain, topo):
 		R = domain.r
 		reso = domain.reso
 		mutation = domain.mutation
-			
+
 		if passCutOff(domain):
 			print "The domain passed the cutoff "
 			score = motif_score(domain)
@@ -102,6 +89,7 @@ def setup_domain(domain_name):
 		#this means the protein has only one chain
 		else:
 			info = info_dataset
+
 
 		method = info['dimStructure.experimentalTechnique']
 
@@ -191,7 +179,7 @@ def passCutOff(domain):
 		return False	
 	else:
 		return True
-	
+
 #Calculate the score for the Domain used for furture ranking
 def motif_score(domain):
 	"""Domain -> int
@@ -202,17 +190,17 @@ def motif_score(domain):
 	length = domain.length	
 	bFactorAdjust = logisticFunction_BFactor(domain)	
 	mutationAdjust = domain.mutation*5
-	
+
 	if domain.hasProstheticGrp == False:
 		pAdjust = 20
 	else:
 		pAdjust = 0
-	
+
 	resoAdjust = logisticFunction_Reso(domain)	
 	rAdjust = logisticFunction_Rvalue(domain)
 	occupancyAdjust = occupancyTest(domain)
 	score = (length - bFactorAdjust - mutationAdjust - pAdjust - occupancyAdjust) * resoAdjust * rAdjust
-	
+
 	return score
 #----------------- Helper functions for Setting up the Domain----------------------
 
@@ -220,10 +208,10 @@ def setupSegmentList(domain_name, counter):
 	"""(String, int) -> list of Segments
 	This function takes a String (domain name) and an int (counter = number of segments). It returns 
 	a list of Segment Class Objects. 
-	
+
 	A segment class object containts the following: 1) segment number, 2) start residue position, 
 	3) start residue, 4) end residue position, 5) end residue
-	
+
 	The above information are collected from CATH Domain Description File
 	"""
 	file = open(file_name, 'r')
@@ -232,23 +220,23 @@ def setupSegmentList(domain_name, counter):
 	for line in file:	
 		#Search for domain name 
 		if "DOMAIN" in line and domain_name in line:
-			
+
 			#Search for Segment range and append to the Domain info
 			for line in file:
 				if "SRANGE" in line and counter > 0:
 					seg = segment.newsegment()
-					
+
 					range = line.split("    ")[-1]
 					start = line.split("    ")[-1].split("  ")[0]
 					stop = line.split("    ")[-1].split("  ")[1]
 					startpos = start.split("=")[-1]
 					stop2 = stop.split("=")[-1]
 					stoppos = stop2.replace("\n", "")
-					
+
 					seg.startpos = int(startpos)
 					seg.endpos = int(stoppos)
 					seg.num = len(segmentlist) + 1
-					
+
 					sequence = getDomainSequence(domain_name)
 					seg.startres = sequence[0]
 					seg.endres = sequence[-1]
@@ -274,13 +262,13 @@ def getDomainSequence(name):
 				if "DLENGTH" in line:
 					domainLength = int(trim(line))
 					break	
-			
+
 			#Search for the line that contains the domain sequence	
 			for line in file:
 				if "DSEQS" in line and len(domainSequence) < domainLength:
 					domainSequence = domainSequence + trim(line)
 					continue
-								
+
 	file.close()
 	return domainSequence	
 
@@ -330,7 +318,7 @@ def has_prosthetic_grp (domain):
 	"""
 	pdb_info = requests.get('http://www.rcsb.org/pdb/files/' + domain.pdb_id +'.pdb')
 	check_Requests(pdb_info)
-	
+
 	reach = 0
 	for line in pdb_info.iter_lines():
 		if not('TITLE' in line): 
@@ -340,18 +328,21 @@ def has_prosthetic_grp (domain):
 			reach = reach + 1
 			if 'APO' in line:
 				return False
-			
+
 	return True		
 
-#--------Helper Functions for B-Factor, Reso, R-value correction, and Occupancy ----------------------
+#--------Helper Functions for B-Factor, Reso, , R-value and occupancy correction ----------------------
+
 def logisticFunction_BFactor(domain):
 	"""Domain -> int
 	This function is responsible for calculating the score of the BFactor using logistic function
 	"""
 	factor_total = 0
+	residue_factor_total = 0
 	pdbID = domain.pdb_id
 	pdb_info = requests.get('http://www.rcsb.org/pdb/files/'+ pdbID+'.pdb')
 	check_Requests(pdb_info)
+	cur_serial_num = 0
 	for line in pdb_info.iter_lines():
 		if (line[0:4] == 'ATOM'):
 			serial_num = int(line[22:26].strip())
@@ -359,33 +350,33 @@ def logisticFunction_BFactor(domain):
 				if (serial_num >= segment.startpos and serial_num <= segment.endpos):
 					BFactor = float(line[60:66].strip())
 					factor_total = factor_total + (1 - logisticFunction(-0.22, BFactor, 45))
-					
-	return factor_total		
+
+	return factor_total	
 
 def logisticFunction_Reso(domain):
 	"""Domain -> int
 	This function is responsible for calculating the score of resolution using logistic function
-	"""	
+	"""
 	reso = domain.reso
 	score = logisticFunction(-7.324, reso, 2.1)
-	
+
 	return score
 
 def logisticFunction_Rvalue(domain):
 	"""Domain -> int
 	This function is responsible for calculating the score of R value using logistic function
-	"""	
+	"""
 	r = domain.r
 	reso = domain.reso
 	x = (10*r)/reso
 	score = logisticFunction(-10.986, x, 1.5)
-	
+
 	return score
 
 def logisticFunction(k, x, mid):
 	""" (int, int, int) -> int
 	This function is performs the calculation of a logistic function
-	"""	
+	"""
 	#k is positive because we are looking for the portion that we can't trust
 	exponent = -k*(x - mid)
 	result = 1/(1+ math.exp(exponent))
@@ -408,7 +399,7 @@ def occupancyTest (domain):
 					occupancy = float(line[55:60].strip())
 					if (occupancy != 1.0 and serial_num not in occupancy_serial_num):
 						occupancy_serial_num.append(serial_num)
-			
+
 	return len(occupancy_serial_num)
 #------------------------ Other Helper Function----------------------------
 
@@ -420,15 +411,16 @@ def trim(string):
 	concat = string.split(" ")[-1]
 	concat.strip()
 	formedString = concat.split("\n")[0]
-	
+
 	return formedString
 
+#A helper function that checks the status code of requests
+#process is stopped if status code is not equal to 200
 def check_Requests(result):
 	"""int -> null
 	This function takes the response code returns by request. If the response code
 	is not 200, than it raises an exception and exits the program
 	"""
-	print result
 	if not (result == 200):
 		try:
 			result.raise_for_status()
@@ -436,41 +428,43 @@ def check_Requests(result):
 			print e
 			print 'exiting program'
 			sys.exit()
+
+#lines for testing
+if __name__ == '__main__':
+	topo = "1.10.8"
+	best_score = 0
+	with open("CathDomainList", "r") as domain_list:
+		list_of_Domain = []
+		counter = 0
+		for line in domain_list:
+			counter = counter + 1
+			if line.startswith("#") == False and line != "\n":
+				domain_info = line.split()
+				if len(domain_info) == 12 and float(domain_info[-1]) <= 2.0:
+					if int(domain_info[1]) == 1 and int(domain_info[2]) == 10 and int(domain_info[3])==8:
+						list_of_Domain.append(domain_info[0])
+
+		print "Done setting up domain list"
+		print "The number of domains in this list is %d"%(len(list_of_Domain))
+		i = 0
+		best_representative = ""
+		for domain_name in list_of_Domain:
+			i = i + 1
+			print "setting up %d out of %d domains"%(i, len(list_of_Domain))
+			newdomain = setup_domain(domain_name)
+
+			print "Calculating score for %s "%(domain_name)
+
+			cur_score = filter_pdb(newdomain, topo)
+			print "the score of this domain is %d"%(cur_score)
+			if cur_score > best_score:
+				best_score = cur_score
+				best_representative = domain_name[0]			
+
+			print best_representative	
 	
-# Read system input.
-topo_list = sys.argv[1:]
 
-# Connect to Database by reading Account File.
-file = open("Account", "r")
-parsed = file.readline().split()
-DB = MySQLdb.connect(host=parsed[0], user=parsed[1], passwd=parsed[2], db=parsed[3])
-cursor = DB.cursor()
 
-# Find the best representative for each topology node.
-for topo in topo_list:
-	print "Working on Topology: " + topo
 
-	best_representative, best_score = "", 0
-	cursor.execute("""SELECT Name FROM Domain WHERE TopoNode = \'%s\' """%(topo))
 
-	domain_list = cursor.fetchall()
-	for domain_name in domain_list:
-		newdomain = setup_domain(domain_name)
-		
-		print "Calculating score for %s "%(domain_name)
 
-		cur_score = filter_pdb(newdomain, topo)
-		if cur_score > best_score:
-			best_score = cur_score
-			best_representative = domain_name[0]
-
-	if best_representative != "":
-		with open("Domain_Result", "a") as f:
-			f.write("BEST REPRESENTATIVE\t%s\t%s\n" % (topo, best_representative[:4]))
-		cursor.execute("""UPDATE Topology SET Representative = \'%s\', Score = \'%.3f\' WHERE Node = \'%s\'"""%(best_representative, best_score, topo))
-	else:
-		print "Cannot find a representative"
-
-# Wrap up and close connection.
-DB.commit()
-DB.close()
